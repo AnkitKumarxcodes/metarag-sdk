@@ -201,11 +201,8 @@ class SemanticChunker(BaseChunker):
     def _get_embeddings(self):
         if self.embedding_model:
             return self.embedding_model
-        try:
-            from langchain_openai import OpenAIEmbeddings
-            return OpenAIEmbeddings()
-        except ImportError:
-            raise ImportError("Run: pip install langchain-openai  (or pass your own embedding_model)")
+        from langchain_ollama import OllamaEmbeddings
+        return OllamaEmbeddings(model="nomic-embed-text")  # free default
 
     def chunk(self, text: str, source: str = "") -> List[Chunk]:
         try:
@@ -291,7 +288,7 @@ Text:
 {text}
 """
 
-    def __init__(self, llm=None, model: str = "gpt-4o-mini"):
+    def __init__(self, llm=None, model: str = "llama3"):
         self.llm = llm
         self.model = model
 
