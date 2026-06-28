@@ -1,4 +1,5 @@
 # metarag.py
+#
 # MetaRAG — Intelligent Pipeline Selection Engine
 #
 # Usage:
