@@ -1,9 +1,9 @@
 # router/selector.py
 
 from __future__ import annotations
-from corpus_profiler import CorpusProfiler
-from query_profiler  import QueryProfiler
-from probe_profiler  import ProbeProfiler
+from .corpus_profiler import CorpusProfiler
+from .query_profiler  import QueryProfiler
+from .probe_profiler  import ProbeProfiler
 
 
 class Router:

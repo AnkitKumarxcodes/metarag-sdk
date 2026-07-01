@@ -3,14 +3,14 @@
 from __future__ import annotations
 from typing import List, Any, Optional
 
-from metrics import (
-    faithfulness  as _faithfulness,
-    relevancy     as _relevancy,
-    precision     as _precision,
-    coverage      as _coverage,
-    redundancy    as _redundancy,
+from .metrics import (
+    faithfulness,
+    relevancy,
+    precision,
+    coverage,
+    redundancy,
 )
-from scorer import Scorer, ScoreResult
+from .scorer import Scorer, ScoreResult
 
 
 class Evaluator:
@@ -43,11 +43,11 @@ class Evaluator:
         if not chunks:
             print("[Evaluator] Warning — no chunks, all scores will be zero")
 
-        f  = _faithfulness(text,  chunks, self.embeddings)
-        r  = _relevancy(query, text,      self.embeddings)
-        p  = _precision(query,    chunks, self.embeddings)
-        c  = _coverage(query,     chunks)
-        rd = _redundancy(chunks,          self.embeddings)
+        f  = faithfulness(text,  chunks, self.embeddings)
+        r  = relevancy(query, text,      self.embeddings)
+        p  = precision(query,    chunks, self.embeddings)
+        c  = coverage(query,     chunks)
+        rd = redundancy(chunks,          self.embeddings)
 
         result = self.scorer.score(
             faithfulness = f,

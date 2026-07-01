@@ -90,3 +90,6 @@ Thumbs.db
 desktop.ini
 *~
 *.tmp
+
+basic_usage.py
+test_v01.py
