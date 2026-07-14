@@ -3,7 +3,15 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 import numpy as np
-from retriever import _chunk_text
+
+# metarag/core/vector_db.py — near the top, no import needed
+def _chunk_text(chunk) -> str:
+    """Extract text — supports (Chunk_or_str, score) tuples, Chunk objects, or raw strings."""
+    if isinstance(chunk, tuple):
+        return _chunk_text(chunk[0])   # ← recurse in case chunk[0] is itself a Chunk object
+    if isinstance(chunk, str):
+        return chunk
+    return getattr(chunk, "text", None) or getattr(chunk, "page_content", "") or str(chunk)
 
 
 class VectorDBInterface(ABC):
@@ -144,7 +152,7 @@ class ChromaVectorDB(VectorDBInterface):
         try:
             import chromadb
         except ImportError:
-            raise ImportError("chromadb required for ChromaVectorDB. Install: pip install chromadb")
+            raise ImportError("Missing optional dependency 'chromadb'.\nUse pip to install chromadb: pip install metarag[chroma]")
 
         self.persist_directory = persist_directory
         self.client = chromadb.PersistentClient(path=persist_directory)
@@ -226,8 +234,7 @@ class FAISSVectorDB(VectorDBInterface):
             import faiss
         except ImportError:
             raise ImportError(
-                "faiss required for FAISSVectorDB. "
-                "Install: pip install faiss-cpu (or faiss-gpu)"
+                "Missing optional dependency 'faiss-cpu'.\nUse pip to install chromadb: pip install metarag[faiss]"
             )
         
         self.faiss = faiss.faiss

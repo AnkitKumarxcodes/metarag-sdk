@@ -111,6 +111,14 @@ class OllamaGenerator(GeneratorInterface):
 # BEFORE — GeneratorWrapper.generate() built its own Answer object
 # AFTER — it returns (text, latency_ms) and lets the caller build whatever Answer it needs
 
+def _chunk_text(chunk) -> str:
+    """Extract text — supports (Chunk_or_str, score) tuples, Chunk objects, or raw strings."""
+    if isinstance(chunk, tuple):
+        return _chunk_text(chunk[0])   # ← recurse in case chunk[0] is itself a Chunk object
+    if isinstance(chunk, str):
+        return chunk
+    return getattr(chunk, "text", None) or getattr(chunk, "page_content", "") or str(chunk)
+
 class GeneratorWrapper:
     """
     Wraps any GeneratorInterface implementation.

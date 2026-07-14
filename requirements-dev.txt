@@ -1,0 +1,18 @@
+# Testing
+pytest>=8.0
+
+# Formatting
+black>=24.0
+
+# Linting
+ruff>=0.5
+
+# Type checking
+mypy>=1.10
+
+# Packaging
+build>=1.2
+twine>=5.1
+
+# Optional Git hooks
+pre-commit>=3.8

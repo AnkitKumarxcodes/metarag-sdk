@@ -6,6 +6,7 @@ import pickle
 import re
 from typing import List, Literal
 from abc import ABC, abstractmethod
+from ..defaults import DEFAULTS   
 
 
 # AFTER
@@ -57,16 +58,17 @@ class Chunker(ChunkerInterface):
     
     def __init__(
         self,
-        strategy: Literal["fixed", "recursive", "semantic", "sentence", "sliding_window", "markdown"] = "recursive",
-        chunk_size: int = 500,
-        overlap: int = 50,
+        strategy: Literal["fixed", "recursive", "semantic", "sentence", "sliding_window", "markdown"] = None,
+        chunk_size: int = None,
+        overlap: int = None,
     ):
+        strategy = strategy or DEFAULTS.as_single("chunk_strategy")
         if strategy not in self.STRATEGIES:
             raise ValueError(f"Unknown strategy: {strategy}. Choose from: {self.STRATEGIES}")
-        
+
         self.strategy = strategy.lower()
-        self.chunk_size = chunk_size
-        self.overlap = overlap
+        self.chunk_size = chunk_size if chunk_size is not None else DEFAULTS.as_single("chunk_size")
+        self.overlap = overlap if overlap is not None else DEFAULTS.as_single("chunk_overlap")
     
     def chunk_documents(
         self,
@@ -147,51 +149,53 @@ class Chunker(ChunkerInterface):
     # Strategy 2: Recursive (splits on separators hierarchically)
     # ─────────────────────────────────────────────────────────
     
-    def _chunk_recursive(self, text: str, source: str = None , metadata: dict = None) -> List[Chunk]:
+    def _chunk_recursive(self, text: str, source: str = None, metadata: dict = None) -> List[Chunk]:
         """Recursive chunking: split on para → sentence → chars."""
         separators = ["\n\n", "\n", ". ", " "]
-        return self._recursive_split(text, separators, 0, source , metadata)
-    
+        return self._recursive_split(text, separators, 0, source, metadata)
+
     def _recursive_split(
         self,
         text: str,
         separators: List[str],
         depth: int,
         source: str,
-        metadata:None
+        metadata: dict = None,
     ) -> List[Chunk]:
-        """Recursively split using separators."""
+        """Recursively split using separators. Internally works with plain
+        text strings; only wraps into Chunk objects at the final merge step."""
         if depth >= len(separators):
-            return self._chunk_fixed(text, source , metadata)
-        
+            return self._chunk_fixed(text, source, metadata)
+
         sep = separators[depth]
-        chunks = []
-        good_chunks = []
-        
+        good_chunks: List[str] = []   # ← always plain strings internally
+
         for sub_text in text.split(sep):
             if len(sub_text) > self.chunk_size:
-                # Too long, recurse
-                sub_chunks = self._recursive_split(sub_text, separators, depth + 1, source , metadata)
-                good_chunks.extend(sub_chunks)
+                # Recurse — but extract just the TEXT from the resulting Chunks,
+                # not the Chunk objects themselves, so good_chunks stays uniform
+                sub_chunks = self._recursive_split(sub_text, separators, depth + 1, source, metadata)
+                good_chunks.extend(c.text for c in sub_chunks)
             else:
                 if sub_text.strip():
                     good_chunks.append(sub_text)
-        
-        # Merge small chunks
+
+        # Merge small pieces back together into Chunk-sized pieces
+        chunks = []
         current = ""
         for chunk_text in good_chunks:
             if len(current) + len(chunk_text) + len(sep) < self.chunk_size:
                 current += sep + chunk_text if current else chunk_text
             else:
                 if current.strip():
-                    chunks.append(Chunk(text=current, source=source , metadata=metadata))
+                    chunks.append(Chunk(text=current, source=source, metadata=metadata))
                 current = chunk_text
-        
+
         if current.strip():
-            chunks.append(Chunk(text=current, source=source , metadata=metadata))
-        
+            chunks.append(Chunk(text=current, source=source, metadata=metadata))
+
         return chunks
-    
+        
     # ─────────────────────────────────────────────────────────
     # Strategy 3: Semantic (split on sentence, group by similarity)
     # ─────────────────────────────────────────────────────────

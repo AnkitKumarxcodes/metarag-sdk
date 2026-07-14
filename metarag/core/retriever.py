@@ -3,9 +3,13 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 import numpy as np
+from ..defaults import DEFAULTS
+
 
 def _chunk_text(chunk) -> str:
-    """Extract text from a chunk — supports Chunk objects or raw strings."""
+    """Extract text — supports (Chunk_or_str, score) tuples, Chunk objects, or raw strings."""
+    if isinstance(chunk, tuple):
+        return _chunk_text(chunk[0])   # ← recurse in case chunk[0] is itself a Chunk object
     if isinstance(chunk, str):
         return chunk
     return getattr(chunk, "text", None) or getattr(chunk, "page_content", "") or str(chunk)
@@ -102,7 +106,8 @@ class HybridRetriever(RetrieverInterface):
         """
         self.bm25 = BM25Retriever(chunks)                       # own index, no embeddings needed
         self.dense = DenseRetriever(chunks, embeddings, vector_db)  # no longer builds internally
-        self.alpha = alpha
+        self.alpha = alpha if alpha is not None else DEFAULTS.as_single("hybrid_alpha")
+
     
     def retrieve(self, query: str, k: int = 4) -> List[Tuple[str, float]]:
         """Hybrid retrieval with interpolation. Guards against empty results from either retriever."""
@@ -161,7 +166,7 @@ class MMRRetriever(RetrieverInterface):
         self.chunks = chunks
         self.embeddings = embeddings
         self.vector_db = vector_db
-        self.lambda_param = lambda_param
+        self.lambda_param = lambda_param if lambda_param is not None else DEFAULTS.as_single("mmr_lambda")
 
         chunk_texts = [_chunk_text(c) for c in chunks]           # ← new: extract text first
         chunk_embeddings = embeddings.embed_documents(chunk_texts)  # ← embed text, not Chunk objects

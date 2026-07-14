@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 from typing import List, Optional, Any, Tuple
-
+from ..defaults import DEFAULTS
 
 def _chunk_text(chunk) -> str:
-    """Extract text — supports (text, score) tuples, Chunk objects, or raw strings."""
+    """Extract text — supports (Chunk_or_str, score) tuples, Chunk objects, or raw strings."""
     if isinstance(chunk, tuple):
-        return chunk[0]
+        return _chunk_text(chunk[0])   # ← recurse in case chunk[0] is itself a Chunk object
     if isinstance(chunk, str):
         return chunk
-    return getattr(chunk, "text", None) or getattr(chunk, "page_content", "")
+    return getattr(chunk, "text", None) or getattr(chunk, "page_content", "") or str(chunk)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ Question: {query}
 
     def __init__(self, generator, n: int = 3):
         self.generator = generator
-        self.n = n
+        self.n = n if n is not None else DEFAULTS.as_single("multiquery_n_variants")
 
     def expand(self, query: str) -> List[str]:
         prompt = self.PROMPT.format(query=query, n=self.n)
@@ -97,7 +97,7 @@ class Reranker:
     """
 
     def __init__(self, model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2", top_k: int = 5):
-        self.default_top_k = top_k
+        self.default_top_k = top_k if top_k is not None else DEFAULTS.as_single("reranker_top_k")
         self.model = None
 
         try:
@@ -146,7 +146,7 @@ class Deduplicator:
     """
 
     def __init__(self, threshold: float = 0.85):
-        self.threshold = threshold
+        self.threshold = threshold if threshold is not None else DEFAULTS.as_single("dedup_threshold")
 
     def deduplicate(self, chunks: List[Any]) -> List[Any]:
         if not chunks:
@@ -263,10 +263,10 @@ class Pipeline(BasePipeline):
 
 class StraightPipeline(Pipeline):
     """Fastest: query → retrieve → return. No extras."""
-    name = "straight"
+    # name = "straight"
 
-    def __init__(self, retriever):
-        super().__init__(retriever)
+    def __init__(self, retriever , name: str = "straight"):
+        super().__init__(retriever , name = name)
 
 
 class MultiQueryPipeline(Pipeline):
@@ -302,6 +302,7 @@ class FullPipeline(Pipeline):
             retriever,
             multiquery=MultiQuery(generator, n=n_variants),
             reranker=reranker,
+            name = self.name
         )
 
 

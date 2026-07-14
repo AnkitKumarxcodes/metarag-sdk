@@ -5,25 +5,89 @@ from typing import List
 from pathlib import Path
 from abc import ABC, abstractmethod
 
+from dataclasses import dataclass, field
+
+@dataclass
+class ExtensionStats:
+    count: int
+    files: list[str]
+    reason: str | None = None
+
+
+class ExtensionCollection:
+
+    def __init__(self, data: dict):
+        self.by_extension = {
+            ext: ExtensionStats(**info)
+            for ext, info in data.items()
+        }
+
+    @property
+    def count(self):
+        return sum(v.count for v in self.by_extension.values())
+
+    @property
+    def files(self):
+        files = []
+        for stat in self.by_extension.values():
+            files.extend(stat.files)
+        return files
+
+    def __getitem__(self, ext):
+        return self.by_extension[ext]
+    
 
 class Document:
     """Simple document representation."""
-    
+
     def __init__(self, text: str, metadata: dict = None):
         self.text = text
         self.metadata = metadata or {}
-    
+
     def __repr__(self):
         return f"Document({len(self.text)} chars, {self.metadata})"
 
 
 class LoaderInterface(ABC):
     """Contract for document loaders."""
-    
+
     @abstractmethod
     def load(self) -> List[Document]:
         """Load documents from source."""
         pass
+
+
+class _MissingDependency(Exception):
+    """
+    Raised internally when an optional dependency (pypdf, python-docx,
+    beautifulsoup4) isn't installed. Caught by _load_file() and aggregated
+    into the end-of-load() summary — never printed per-file, so loading
+    100 PDFs without pypdf installed prints ONE line, not 100.
+    """
+    pass
+
+
+class DocumentList(list):
+    """
+    A list of Document objects that ALSO carries load/skip stats.
+
+    Behaves exactly like a normal list everywhere (iteration, indexing,
+    len(), passing to Chunker.chunk_documents(), isinstance(x, list) checks
+    all work unchanged) — it just additionally exposes .loaded and .skipped
+    for inspection after load() returns.
+
+    .loaded / .skipped shape (matched, for consistency):
+        {
+            "pdf": {"count": 8, "files": ["report1.pdf", "manual.pdf", ...]},
+            ...
+        }
+    .skipped entries also include "reason" (why the file was skipped).
+    """
+
+    def __init__(self, docs: List[Document], loaded: dict, skipped: dict):
+        super().__init__(docs)
+        self.loaded = ExtensionCollection(loaded)
+        self.skipped = ExtensionCollection(skipped)
 
 
 class DocumentLoader(LoaderInterface):
@@ -32,68 +96,138 @@ class DocumentLoader(LoaderInterface):
     No hard dependencies — tries to import only when needed.
     Guides user if format not supported.
     """
-    
+
     def __init__(self, path: str):
         self.path = Path(path)
         if not self.path.exists():
             raise FileNotFoundError(f"Path not found: {path}")
-    
-    def load(self) -> List[Document]:
-        """Load all documents from path (directory or file)."""
-        docs = []
-        
+
+        # Tracked as we go; used for the printed summary AND exposed on the
+        # DocumentList that load() returns. Shape: {ext: {"count": N, "files": [...]}}
+        self.loaded: dict = {}
+        self.skipped: dict = {}
+
+    def load(self, verbose: bool = True) -> DocumentList:
+        """
+        Load all documents from path (directory or file).
+
+        Args:
+            verbose: print the load summary. Default True — set to False when
+                    called from inside another component (like MetaRAG) that
+                    already logs its own progress, to avoid printing twice.
+        """
+        self.loaded = {}
+        self.skipped = {}
+        docs: List[Document] = []
+
         if self.path.is_file():
             docs.extend(self._load_file(self.path))
         elif self.path.is_dir():
             for file_path in self.path.rglob("*"):
                 if file_path.is_file():
                     docs.extend(self._load_file(file_path))
-        
-        if not docs:
-            print(f"[DocumentLoader] No documents loaded from {self.path}")
-        else:
-            print(f"[DocumentLoader] Loaded {len(docs)} documents")
-        
-        return docs
+
+        if verbose:
+            self._print_summary()
+
+        return DocumentList(docs, self.loaded, self.skipped)
     
+    # ─────────────────────────────────────────────────────────
+    # Dispatch + tracking
+    # ─────────────────────────────────────────────────────────
+
     def _load_file(self, file_path: Path) -> List[Document]:
-        """Load single file based on extension."""
-        ext = file_path.suffix.lower()
-        
+        """Load a single file based on extension, recording the outcome
+        into self.loaded / self.skipped as it goes."""
+        ext = file_path.suffix.lower().lstrip(".")
+
+        loader_map = {
+            "pdf": self._load_pdf, "txt": self._load_txt, "docx": self._load_docx,
+            "html": self._load_html, "htm": self._load_html, "json": self._load_json,
+            "csv": self._load_csv, "md": self._load_markdown,
+        }
+        loader_fn = loader_map.get(ext)
+        if loader_fn is None:
+            return []  # unsupported format — silent skip, unchanged from before
+
         try:
-            if ext == ".pdf":
-                return self._load_pdf(file_path)
-            elif ext == ".txt":
-                return self._load_txt(file_path)
-            elif ext == ".docx":
-                return self._load_docx(file_path)
-            elif ext == ".html" or ext == ".htm":
-                return self._load_html(file_path)
-            elif ext == ".json":
-                return self._load_json(file_path)
-            elif ext == ".csv":
-                return self._load_csv(file_path)
-            elif ext == ".md":
-                return self._load_markdown(file_path)
-            else:
-                # Silent skip for unsupported formats
-                return []
+            result = loader_fn(file_path)
+            if result:
+                entry = self.loaded.setdefault(ext, {"count": 0, "files": []})
+                entry["count"] += 1
+                entry["files"].append(file_path.name)
+            return result
+        except _MissingDependency as e:
+            entry = self.skipped.setdefault(ext, {"count": 0, "files": [], "reason": str(e)})
+            entry["count"] += 1
+            entry["files"].append(file_path.name)
+            return []
         except Exception as e:
             print(f"[DocumentLoader] Error loading {file_path.name}: {e}")
             return []
-    
+
+    def _print_summary(self):
+        """One clean report after load() finishes — never printed per-file."""
+        print("\nDocumentLoader Report")
+        print("-" * 30)
+
+        if self.loaded:
+            print("\nFiles Loaded:")
+            for ext, info in sorted(self.loaded.items()):
+                print(f"  ✓ {ext:<5}: {info['count']}")
+
+        if self.skipped:
+            print("\nFiles Skipped:")
+            for ext, info in sorted(self.skipped.items()):
+                reason_line = info["reason"].splitlines()[-1].strip()
+                print(f"  ✗ {ext:<5}: {info['count']} ({reason_line})")
+
+        total_loaded = sum(v["count"] for v in self.loaded.values())
+        total_skipped = sum(v["count"] for v in self.skipped.values())
+        suffix = f", skipped {total_skipped}" if total_skipped else ""
+        print()
+        
+        print(f"Files Loaded : {total_loaded}")
+        print(f"Files Skipped: {total_skipped}")
+        print()
+
+    def names(self, which: str = "all", ext: str = None) -> dict:
+        """
+        Print + return just the filenames, on request.
+
+        Args:
+            which: "loaded", "skipped", or "all" (default)
+            ext: optionally filter to one extension, e.g. "pdf"
+        """
+        source = {"loaded": self.loaded, "skipped": self.skipped}
+        to_show = source if which == "all" else {which: source[which]}
+
+        result = {}
+        for category, by_ext in to_show.items():
+            print(f"\n{category.title()}:")
+            result[category] = {}
+            for extension, info in by_ext.items():
+                if ext and extension != ext:
+                    continue
+                result[category][extension] = info["files"]
+                for f in info["files"]:
+                    print(f"  {extension}: {f}")
+
+        return result
+
     # ─────────────────────────────────────────────────────────
-    # PDF Loading
+    # PDF
     # ─────────────────────────────────────────────────────────
-    
+
     def _load_pdf(self, file_path: Path) -> List[Document]:
-        """Load PDF (optional: pypdf)."""
         try:
             import pypdf
         except ImportError:
-            print(f"[DocumentLoader] ⚠️  pypdf required for PDFs. Install: pip install pypdf")
-            return []
-        
+            raise _MissingDependency(
+                "Missing optional dependency 'pypdf'.\n"
+                "Use pip to install pypdf: pip install metarag[pdf]"
+            )
+
         docs = []
         try:
             reader = pypdf.PdfReader(file_path)
@@ -102,192 +236,145 @@ class DocumentLoader(LoaderInterface):
                 if text and text.strip():
                     docs.append(Document(
                         text=text,
-                        metadata={
-                            "source": file_path.name,
-                            "page": i,
-                            "type": "pdf"
-                        }
+                        metadata={"source": file_path.name, "page": i, "type": "pdf"}
                     ))
         except Exception as e:
             print(f"[DocumentLoader] Error parsing PDF {file_path.name}: {e}")
-        
+
         return docs
-    
+
     # ─────────────────────────────────────────────────────────
-    # Text Files
+    # Text
     # ─────────────────────────────────────────────────────────
-    
+
     def _load_txt(self, file_path: Path) -> List[Document]:
-        """Load plain text."""
         try:
             text = file_path.read_text(encoding="utf-8")
             if text.strip():
-                return [Document(
-                    text=text,
-                    metadata={"source": file_path.name, "type": "txt"}
-                )]
+                return [Document(text=text, metadata={"source": file_path.name, "type": "txt"})]
         except UnicodeDecodeError:
             print(f"[DocumentLoader] Could not decode {file_path.name} (not UTF-8)")
-        
         return []
-    
+
     # ─────────────────────────────────────────────────────────
-    # DOCX Files
+    # DOCX
     # ─────────────────────────────────────────────────────────
-    
+
     def _load_docx(self, file_path: Path) -> List[Document]:
-        """Load DOCX (optional: python-docx)."""
         try:
             from docx import Document as DocxDocument
         except ImportError:
-            print(f"[DocumentLoader] ⚠️  python-docx required for DOCX. Install: pip install python-docx")
-            return []
-        
+            raise _MissingDependency(
+                "Missing optional dependency 'python-docx'.\n"
+                "Use pip to install python-docx: pip install metarag[docx]"
+            )
+
         try:
             doc = DocxDocument(file_path)
             text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
-            
             if text.strip():
-                return [Document(
-                    text=text,
-                    metadata={"source": file_path.name, "type": "docx"}
-                )]
+                return [Document(text=text, metadata={"source": file_path.name, "type": "docx"})]
         except Exception as e:
             print(f"[DocumentLoader] Error parsing DOCX {file_path.name}: {e}")
-        
+
         return []
-    
+
     # ─────────────────────────────────────────────────────────
-    # HTML Files
+    # HTML
     # ─────────────────────────────────────────────────────────
-    
+
     def _load_html(self, file_path: Path) -> List[Document]:
-        """Load HTML (optional: beautifulsoup4)."""
         try:
             from bs4 import BeautifulSoup
         except ImportError:
-            print(f"[DocumentLoader] ⚠️  beautifulsoup4 required for HTML. Install: pip install beautifulsoup4")
-            return []
-        
+            raise _MissingDependency(
+                "Missing optional dependency 'beautifulsoup4'.\n"
+                "Use pip to install beautifulsoup4: pip install metarag[html]"
+            )
+
         try:
             html = file_path.read_text(encoding="utf-8")
             soup = BeautifulSoup(html, "html.parser")
-            
-            # Remove script and style elements
             for tag in soup(["script", "style", "nav", "footer"]):
                 tag.decompose()
-            
             text = soup.get_text(separator="\n", strip=True)
             text = "\n".join(line.strip() for line in text.split("\n") if line.strip())
-            
             if text.strip():
-                return [Document(
-                    text=text,
-                    metadata={"source": file_path.name, "type": "html"}
-                )]
+                return [Document(text=text, metadata={"source": file_path.name, "type": "html"})]
         except Exception as e:
             print(f"[DocumentLoader] Error parsing HTML {file_path.name}: {e}")
-        
+
         return []
-    
+
     # ─────────────────────────────────────────────────────────
-    # JSON Files
+    # JSON
     # ─────────────────────────────────────────────────────────
-    
+
     def _load_json(self, file_path: Path) -> List[Document]:
-        """Load JSON (assumes list of dicts with 'text' field)."""
         import json
-        
         try:
             data = json.loads(file_path.read_text())
             docs = []
-            
             if isinstance(data, list):
                 for i, item in enumerate(data):
                     if isinstance(item, dict) and "text" in item:
                         metadata = item.get("metadata", {})
-                        metadata["source"] = file_path.name
-                        metadata["type"] = "json"
-                        metadata["index"] = i
-                        
+                        metadata.update({"source": file_path.name, "type": "json", "index": i})
                         docs.append(Document(text=item["text"], metadata=metadata))
-            
             return docs
         except json.JSONDecodeError as e:
             print(f"[DocumentLoader] Invalid JSON in {file_path.name}: {e}")
         except Exception as e:
             print(f"[DocumentLoader] Error parsing JSON {file_path.name}: {e}")
-        
         return []
-    
+
     # ─────────────────────────────────────────────────────────
-    # CSV Files
+    # CSV (pandas is a core dependency — never optional here)
     # ─────────────────────────────────────────────────────────
-    
+
     def _load_csv(self, file_path: Path) -> List[Document]:
-        """Load CSV (optional: pandas, assumes 'text' column)."""
-        try:
-            import pandas as pd
-        except ImportError:
-            print(f"[DocumentLoader] ⚠️  pandas required for CSV. Install: pip install pandas")
-            return []
-        
+        import pandas as pd
         try:
             df = pd.read_csv(file_path)
-            
             if "text" not in df.columns:
                 print(f"[DocumentLoader] CSV must have 'text' column. Found: {list(df.columns)}")
                 return []
-            
+
             docs = []
             for idx, row in df.iterrows():
                 metadata = {col: str(row[col]) for col in df.columns if col != "text"}
-                metadata["source"] = file_path.name
-                metadata["type"] = "csv"
-                metadata["row"] = idx
-                
+                metadata.update({"source": file_path.name, "type": "csv", "row": idx})
                 docs.append(Document(text=row["text"], metadata=metadata))
-            
             return docs
         except Exception as e:
             print(f"[DocumentLoader] Error parsing CSV {file_path.name}: {e}")
-        
         return []
-    
+
     # ─────────────────────────────────────────────────────────
-    # Markdown Files
+    # Markdown
     # ─────────────────────────────────────────────────────────
-    
+
     def _load_markdown(self, file_path: Path) -> List[Document]:
-        """Load Markdown."""
         try:
             text = file_path.read_text(encoding="utf-8")
             if text.strip():
-                return [Document(
-                    text=text,
-                    metadata={"source": file_path.name, "type": "markdown"}
-                )]
+                return [Document(text=text, metadata={"source": file_path.name, "type": "markdown"})]
         except Exception as e:
             print(f"[DocumentLoader] Error parsing Markdown {file_path.name}: {e}")
-        
         return []
-    
+
     # ─────────────────────────────────────────────────────────
-    # Load by Format
+    # Convenience filters
     # ─────────────────────────────────────────────────────────
-    
+
     def load_pdfs(self) -> List[Document]:
-        """Load only PDFs."""
         return [doc for doc in self.load() if doc.metadata.get("type") == "pdf"]
-    
+
     def load_texts(self) -> List[Document]:
-        """Load only text files."""
         return [doc for doc in self.load() if doc.metadata.get("type") == "txt"]
-    
+
     def load_jsons(self) -> List[Document]:
-        """Load only JSON files."""
         return [doc for doc in self.load() if doc.metadata.get("type") == "json"]
-    
+
     def load_format(self, fmt: str) -> List[Document]:
-        """Load specific format."""
         return [doc for doc in self.load() if doc.metadata.get("type") == fmt.lower()]

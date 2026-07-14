@@ -1,5 +1,4 @@
-# metarag/core/__init__.py
-
+#core __init__.py
 from .loader import Document, DocumentLoader, LoaderInterface
 from .chunking import Chunk, Chunker, ChunkerInterface
 from .embeddings import EmbeddingInterface, CachedEmbeddings
@@ -13,26 +12,9 @@ from .retriever import (
 )
 
 __all__ = [
-    # loader
-    "Document",
-    "DocumentLoader",
-    "LoaderInterface",
-    # chunking
-    "Chunk",
-    "Chunker",
-    "ChunkerInterface",
-    # embeddings
-    "EmbeddingInterface",
-    "CachedEmbeddings",
-    # vector_db
-    "VectorDBInterface",
-    "InMemoryVectorDB",
-    "ChromaVectorDB",
-    "FAISSVectorDB",
-    # retriever
-    "RetrieverInterface",
-    "BM25Retriever",
-    "DenseRetriever",
-    "HybridRetriever",
-    "MMRRetriever",
+    "Document", "DocumentLoader", "LoaderInterface",
+    "Chunk", "Chunker", "ChunkerInterface",
+    "EmbeddingInterface", "CachedEmbeddings",
+    "VectorDBInterface", "InMemoryVectorDB", "ChromaVectorDB", "FAISSVectorDB",
+    "RetrieverInterface", "BM25Retriever", "DenseRetriever", "HybridRetriever", "MMRRetriever",
 ]

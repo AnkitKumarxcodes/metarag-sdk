@@ -4,9 +4,7 @@
 
 # ── Python ────────────────────────────────
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
 *.pdb
 *.egg-info/
 dist/
@@ -15,10 +13,12 @@ build/
 .eggs/
 
 # ── Virtual Environment ───────────────────
-metarag_v1
-venv/
 .venv/
+venv/
 env/
+ENV/
+testsVenv_V1/
+metarag_v1/
 
 # ── Environment Variables ─────────────────
 .env
@@ -36,10 +36,6 @@ results.json
 
 # ── Data Folder ───────────────────────────
 # keep folder structure, ignore contents
-metarag/examples/data
-
-data/results/*
-!data/results/.gitkeep
 
 # ── Model Files ───────────────────────────
 *.pkl
@@ -48,12 +44,9 @@ data/results/*
 *.pth
 *.bin
 *.onnx
-model_building/models/*
-!model_building/models/.gitkeep
 
 # ── Cache Files ───────────────────────────
 *.npy
-*.pkl
 *.cache
 
 # ── Logs ──────────────────────────────────
@@ -81,16 +74,7 @@ desktop.ini
 !assets/**
 
 queries.py
-model_building
 
 # Line to add — ignore OS temp files
-.DS_Store
-Thumbs.db
-desktop.ini
 *~
 *.tmp
-
-basic_usage.py
-test_v01.py
-
-examples

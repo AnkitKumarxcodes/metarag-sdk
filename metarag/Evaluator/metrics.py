@@ -6,13 +6,22 @@ import math
 from typing import List, Tuple, Any
 
 
-def _text(chunk) -> str:
-    """Extract text from a chunk — supports (text, score) tuples, Chunk objects, or raw strings."""
+def _chunk_text(chunk) -> str:
+    """Extract text — supports (Chunk_or_str, score) tuples, Chunk objects, or raw strings."""
     if isinstance(chunk, tuple):
-        return chunk[0]
+        return _chunk_text(chunk[0])   # ← recurse in case chunk[0] is itself a Chunk object
     if isinstance(chunk, str):
         return chunk
-    return getattr(chunk, "text", None) or getattr(chunk, "page_content", "")
+    return getattr(chunk, "text", None) or getattr(chunk, "page_content", "") or str(chunk)
+
+
+def _text(chunk) -> str:
+    """Extract text — supports (Chunk_or_str, score) tuples, Chunk objects, or raw strings."""
+    if isinstance(chunk, tuple):
+        return _text(chunk[0])   # recurse in case chunk[0] is itself a Chunk object
+    if isinstance(chunk, str):
+        return chunk
+    return getattr(chunk, "text", None) or getattr(chunk, "page_content", "") or str(chunk)
 
 
 def _cosine(a: List[float], b: List[float]) -> float:

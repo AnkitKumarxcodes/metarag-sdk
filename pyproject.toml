@@ -5,14 +5,34 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "metarag"
 version = "0.3.0"
-description = "AutoML for RAG — Intelligent Pipeline Selection Engine"
+description = "Framework for benchmarking, evaluating, and orchestrating Retrieval-Augmented Generation pipelines."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Ankit Kumar", email = "ankitsingh17082003@gmail.com"}
 ]
-keywords = ["rag", "llm", "retrieval", "pipeline-selection", "automl"]
+keywords = [
+    "rag",
+    "llm",
+    "retrieval",
+    "evaluation",
+    "benchmarking",
+    "pipeline-selection",
+    "router",
+    "retriever"
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 
 # Core dependencies — required for MetaRAG's default in-memory path
 # (InMemoryVectorDB + HybridRetriever, which needs BM25). No LangChain.
@@ -57,7 +77,13 @@ all = [
     "requests>=2.31.0",
 ]
 
-dev = ["pytest>=7.0", "black>=23.0", "mypy>=1.0"]
+dev = [
+    "pytest>=7",
+    "black>=23",
+    "mypy>=1",
+    "ruff>=0.5"
+]
+
 
 [project.urls]
 Homepage = "https://github.com/AnkitKumarxcodes/MetaRAG---Intelligent-Pipeline-Selection-Engine"
