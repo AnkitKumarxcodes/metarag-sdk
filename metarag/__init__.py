@@ -53,6 +53,7 @@ from .router import (
     RouterInterface, QueryProfiler, CorpusProfiler, ProbeProfiler,
     Router
 )
+from .defaults import DEFAULTS , MetaRAGDefaults
 
 __version__ = "0.3.0"
 
@@ -71,5 +72,5 @@ __all__ = [
     "faithfulness", "relevancy", "precision", "coverage", "redundancy",
     "Scorer", "ScoreResult", "Evaluator",
     "RouterInterface", "QueryProfiler", "CorpusProfiler", "ProbeProfiler",
-    "Router",
+    "Router","DEFAULTS","MetaRAGDefaults",
 ]

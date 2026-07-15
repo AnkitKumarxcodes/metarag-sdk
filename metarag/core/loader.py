@@ -35,6 +35,26 @@ class ExtensionCollection:
 
     def __getitem__(self, ext):
         return self.by_extension[ext]
+    def items(self):
+        return self.by_extension.items()
+
+    def keys(self):
+        return self.by_extension.keys()
+
+    def values(self):
+        return self.by_extension.values()
+
+    def __iter__(self):
+        return iter(self.by_extension)
+
+    def __len__(self):
+        return len(self.by_extension)
+
+    def __contains__(self, key):
+        return key in self.by_extension
+
+    def get(self, key, default=None):
+        return self.by_extension.get(key, default)
     
 
 class Document:

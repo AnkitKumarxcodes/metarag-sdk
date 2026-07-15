@@ -32,7 +32,7 @@ def test_loaded_count_matches_documents():
 
     report = loader.load(verbose=False)
 
-    assert report.loaded.count == len(report)
+    assert report.loaded.count == len(report.loaded.files)
 
 
 def test_loaded_files_is_list():

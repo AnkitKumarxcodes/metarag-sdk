@@ -49,12 +49,16 @@ class BM25Retriever(RetrieverInterface):
                 "rank-bm25 required for BM25Retriever. Install: pip install rank-bm25"
             )
 
+
         self.chunks = chunks  # original objects (Chunk or str) — kept for return
         corpus_texts = [_chunk_text(c) for c in chunks]
         self.corpus = [t.lower().split() for t in corpus_texts]
         self.bm25 = BM25Okapi(self.corpus)
 
     def retrieve(self, query: str, k: int = 4) -> List[Tuple]:
+        if not query or not query.strip():
+            return []
+
         query_tokens = query.lower().split()
         scores = self.bm25.get_scores(query_tokens)
         top_indices = np.argsort(scores)[::-1][:k]
@@ -83,7 +87,10 @@ class DenseRetriever(RetrieverInterface):
         self.vector_db = vector_db
         # No build() call here — caller is responsible for building once
 
-    def retrieve(self, query: str, k: int = 4):
+    def retrieve(self, query: str, k: int = 4) -> List[Tuple[str, float]]:
+        """Retrieve using dense embeddings."""
+        if not query or not query.strip():
+            return []
         query_embedding = self.embeddings.embed(query)
         return self.vector_db.search(query_embedding, k=k)
 
@@ -92,7 +99,7 @@ class DenseRetriever(RetrieverInterface):
 # ─────────────────────────────────────────────────────────────
 
 class HybridRetriever(RetrieverInterface):
-    def __init__(self, chunks: List[str], embeddings, vector_db, alpha: float = 0.5):
+    def __init__(self, chunks: List[str], embeddings, vector_db, alpha: float = None):
         """
         Args:
             vector_db: an ALREADY-BUILT VectorDBInterface instance,
@@ -105,12 +112,15 @@ class HybridRetriever(RetrieverInterface):
 
         """
         self.bm25 = BM25Retriever(chunks)                       # own index, no embeddings needed
-        self.dense = DenseRetriever(chunks, embeddings, vector_db)  # no longer builds internally
+        self.dense = DenseRetriever(chunks, embeddings, vector_db) 
         self.alpha = alpha if alpha is not None else DEFAULTS.as_single("hybrid_alpha")
+        
 
     
     def retrieve(self, query: str, k: int = 4) -> List[Tuple[str, float]]:
         """Hybrid retrieval with interpolation. Guards against empty results from either retriever."""
+        if not query or not query.strip():
+            return []
         bm25_results = self.bm25.retrieve(query, k=k * 2)
         dense_results = self.dense.retrieve(query, k=k * 2)
 
@@ -162,7 +172,7 @@ class MMRRetriever(RetrieverInterface):
     index lookup and no risk of duplicate-chunk-text bugs.
     """
 
-    def __init__(self, chunks: List, embeddings, vector_db, lambda_param: float = 0.6):
+    def __init__(self, chunks: List, embeddings, vector_db, lambda_param: float = None):
         self.chunks = chunks
         self.embeddings = embeddings
         self.vector_db = vector_db
@@ -177,6 +187,8 @@ class MMRRetriever(RetrieverInterface):
 
     def retrieve(self, query: str, k: int = 4) -> List[Tuple[str, float]]:
         """MMR retrieval — pure local computation, index-safe by construction."""
+        if not query or not query.strip():
+            return []
         query_embedding = np.array(self.embeddings.embed(query), dtype=np.float32)
         query_norm = np.linalg.norm(query_embedding)
         query_norm = query_norm if query_norm != 0 else 1e-8

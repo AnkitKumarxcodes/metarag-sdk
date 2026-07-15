@@ -48,6 +48,7 @@ results.json
 # ── Cache Files ───────────────────────────
 *.npy
 *.cache
+*.pytest_cache
 
 # ── Logs ──────────────────────────────────
 *.log

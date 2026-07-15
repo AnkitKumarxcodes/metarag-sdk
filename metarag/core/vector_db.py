@@ -89,19 +89,25 @@ class InMemoryVectorDB(VectorDBInterface):
         print(f"[InMemoryVectorDB] Built index with {len(chunks)} chunks")
         return self
     
-    def search(self, query_embedding: List[float], k: int = 4) -> List[Tuple[str, float]]:
-        """Search using cosine similarity. Zero-vector embeddings are guarded against."""
+    def search(self, query_embedding, k: int = 4):
         if self.embeddings is None:
             raise RuntimeError("Index not built. Call build() first.")
 
         query_vec = np.array(query_embedding, dtype=np.float32)
 
-        # Guard against zero-vector chunk embeddings (empty/broken embeddings)
+        # NEW: catch shape mismatches (e.g. an empty query embedding) before
+        # they reach the dot product — this is a different failure mode than
+        # a valid-shape zero vector, which is already guarded below.
+        if query_vec.ndim == 0 or query_vec.shape[0] != self.embeddings.shape[1]:
+            raise ValueError(
+                f"query_embedding has shape {query_vec.shape}, expected ({self.embeddings.shape[1]},). "
+                f"This usually means embed_query() was called on empty/invalid text."
+            )
+
         norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
         safe_norms = np.where(norms == 0, 1e-8, norms)
         normalized = self.embeddings / safe_norms
 
-        # Guard against a zero-vector query embedding too
         query_norm = np.linalg.norm(query_vec)
         query_norm = query_norm if query_norm != 0 else 1e-8
         query_normalized = query_vec / query_norm
