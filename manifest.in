@@ -1,0 +1,16 @@
+prune .metarag
+prune .pytest_cache
+prune __pycache__
+
+prune .venv
+prune venv
+prune env
+
+prune metarag_v1
+prune testsVenv_v0.3.0
+prune testVenv2_v0.3.0
+
+global-exclude *.py[cod]
+global-exclude __pycache__
+global-exclude *.so
+global-exclude *.pyd

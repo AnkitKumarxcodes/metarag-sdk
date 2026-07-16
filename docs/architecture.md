@@ -1,412 +1,189 @@
 # Architecture
 
-MetaRAG is built around a simple idea:
+MetaRAG separates a Retrieval-Augmented Generation (RAG) system into independent modules. Each module has a single responsibility and can be replaced without changing the rest of the workflow.
 
-> **Every stage of a Retrieval-Augmented Generation (RAG) system should be independent, composable, and replaceable.**
+The framework can be used at two levels:
 
-Instead of hiding the entire workflow behind a single API call, MetaRAG exposes each stage as a standalone module, allowing you to customize, benchmark, or replace any component.
+- **Framework API** — build and benchmark complete RAG systems.
+- **Toolkit API** — use individual components independently.
 
 ---
 
-# High-Level Architecture
+## Project Structure
 
 ```text
-                           MetaRAG
-
-        ┌───────────────────────────────────────────┐
-        │              Source Documents             │
-        └───────────────────────────────────────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │   Document Loader   │
-                └─────────────────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │      Chunker        │
-                └─────────────────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │     Embeddings      │
-                └─────────────────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │   Vector Database   │
-                └─────────────────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │     Retriever       │
-                └─────────────────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │      Pipeline       │
-                └─────────────────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │     Generator       │
-                └─────────────────────┘
-                           │
-                           ▼
-                      Final Answer
+metarag/
+│
+├── metarag.py          High-level framework
+├── defaults.py         Shared configuration
+│
+├── core/
+│   ├── loader.py
+│   ├── chunking.py
+│   ├── embeddings.py
+│   ├── vector_db.py
+│   └── retriever.py
+│
+├── pipelines/
+│   ├── generator.py
+│   └── pipeline.py
+│
+├── Evaluator/
+│   ├── evaluator.py
+│   ├── scorer.py
+│   └── metrics.py
+│
+└── router/
+    ├── router.py
+    ├── query_profiler.py
+    ├── corpus_profiler.py
+    └── probe_profiler.py
 ```
 
 ---
 
-# Workflow
+## Framework Layer
 
-The complete retrieval pipeline follows seven stages.
+Most users only interact with a single class.
 
-```text
-Load
-  │
-Chunk
-  │
-Embed
-  │
-Index
-  │
-Retrieve
-  │
-Optimize
-  │
-Generate
+```python
+rag = MetaRAG(
+    docs="data",
+    embeddings=...,
+    generator=...
+)
+
+rag.fit()
+
+rag.ask(...)
+
+rag.benchmark(...)
 ```
 
-Each stage has a single responsibility.
+Internally, MetaRAG builds and connects the lower-level components automatically.
 
 ---
 
-# Component Overview
-
-## 1. Document Loader
-
-Responsible for reading files from disk and converting them into a standard document format.
-
-```text
-PDF
-TXT
-MD
- │
- ▼
-Document
-```
-
-Output:
-
-- Document text
-- Metadata
-- Loading report
-
----
-
-## 2. Chunker
-
-Splits large documents into smaller retrieval units.
-
-```text
-Document
-     │
-     ▼
-┌────────────┐
-│ Chunk 1    │
-├────────────┤
-│ Chunk 2    │
-├────────────┤
-│ Chunk 3    │
-└────────────┘
-```
-
-Supported strategies include:
-
-- Fixed
-- Recursive
-- Semantic
-- Sentence
-- Sliding Window
-- Markdown
-
----
-
-## 3. Embeddings
-
-Transforms each chunk into a numerical vector.
-
-```text
-Chunk Text
-      │
-      ▼
-Embedding Model
-      │
-      ▼
-Dense Vector
-```
-
-MetaRAG supports any embedding model implementing the embedding interface.
-
-Examples:
-
-- Sentence Transformers
-- Ollama Embeddings
-- OpenAI Embeddings
-- Custom Models
-
----
-
-## 4. Vector Database
-
-Stores vectors for efficient similarity search.
-
-```text
-Chunk
-   │
-Vector
-   │
-   ▼
-Vector Database
-```
-
-Supported implementations:
-
-| Database | Persistence |
-|----------|-------------|
-| InMemory | No |
-| FAISS | Local |
-| Chroma | Persistent |
-
----
-
-## 5. Retriever
-
-Retrieves the most relevant chunks for a user query.
-
-```text
-User Query
-      │
-      ▼
-Embedding
-      │
-      ▼
-Similarity Search
-      │
-      ▼
-Top-k Chunks
-```
-
-Available retrievers:
-
-- Dense
-- BM25
-- Hybrid
-- MMR
-
----
-
-## 6. Pipeline
-
-Pipelines improve retrieval before generation.
-
-Instead of simply retrieving chunks, a pipeline may:
-
-- Expand the query
-- Generate a hypothetical answer
-- Merge retrieval results
-- Re-rank chunks
-- Remove duplicates
-
-```text
-Query
- │
- ▼
-MultiQuery
- │
- ▼
-Retrieve
- │
- ▼
-Rerank
- │
- ▼
-Deduplicate
- │
- ▼
-Top Chunks
-```
-
-Available pipelines:
-
-| Pipeline | Purpose |
-|-----------|----------|
-| Straight | Basic retrieval |
-| MultiQuery | Query expansion |
-| HyDE | Hypothetical document retrieval |
-| Reranked | Cross-encoder reranking |
-| Full | Combines multiple retrieval enhancements |
-
----
-
-## 7. Generator
-
-The generator receives the optimized context and produces the final answer.
-
-```text
-Question
-      │
-Retrieved Context
-      │
-      ▼
-Prompt Builder
-      │
-      ▼
-LLM
-      │
-      ▼
-Answer
-```
-
-Supported generators include:
-
-- Ollama
-- Custom generators
-- Any implementation of `GeneratorInterface`
-
----
-
-# Data Flow
+## Internal Flow
 
 ```text
 Documents
-      │
-      ▼
-Documents[]
-      │
-      ▼
-Chunks[]
-      │
-      ▼
-Embeddings[]
-      │
-      ▼
-Vector Index
-      │
-      ▼
-Retrieved Chunks
-      │
-      ▼
-Optimized Chunks
-      │
-      ▼
-Generated Answer
+   │
+   ▼
+Loader ──► Chunker ──► Embeddings
+                         │
+                         ▼
+                    Vector Database
+                         │
+                         ▼
+                     Retriever
+                         │
+          ┌──────────────┴──────────────┐
+          ▼                             ▼
+   Retrieval Pipelines            Evaluation
+          │                             │
+          └──────────────┬──────────────┘
+                         ▼
+                       Router
+                         │
+                         ▼
+                     Final Answer
 ```
 
-Every module consumes the output of the previous stage.
+Unlike many RAG libraries, benchmarking and evaluation are built into the framework rather than added as external scripts.
 
 ---
 
-# Design Principles
+## Module Responsibilities
 
-## Modular
+| Module | Responsibility |
+|---------|----------------|
+| `core/` | Loading, chunking, embeddings, vector stores and retrieval |
+| `pipelines/` | Retrieval enhancement pipelines |
+| `Evaluator/` | Pipeline evaluation and benchmarking |
+| `router/` | Query profiling and pipeline selection |
+| `metarag.py` | High-level orchestration |
+| `defaults.py` | Shared configurable parameters |
 
-Each module can be used independently.
+---
 
-Example:
+## During `fit()`
+
+Running
+
+```python
+rag.fit()
+```
+
+builds the retrieval system.
+
+Typical output:
 
 ```text
-Loader
+Files Loaded      : 8
 
-or
+Documents Extracted : 101
 
-Chunker
+Chunks Generated    : 333
 
-or
+Embeddings Generated
 
-Retriever
+Vector Index Built
+
+Pipelines Initialized : 7
 ```
 
-without requiring the rest of the framework.
-
 ---
 
-## Extensible
+## During `benchmark()`
 
-Every major component is built around a lightweight interface.
-
-You can implement your own:
-
-- Loader
-- Embedding Model
-- Vector Database
-- Retriever
-- Generator
-
-without modifying MetaRAG itself.
-
----
-
-## Composable
-
-Components are designed to work together through simple inputs and outputs.
+Every configured pipeline is evaluated on the same set of queries.
 
 ```text
-Any Loader
-      │
-Any Chunker
-      │
-Any Embedding Model
-      │
-Any Vector Database
-      │
-Any Retriever
-      │
-Any Generator
+85 Queries
+
+×
+
+7 Pipelines
+
+↓
+
+595 Evaluations
+
+↓
+
+benchmark.csv
+router_thresholds.json
 ```
 
-No component is tightly coupled to a specific implementation.
+The benchmark results can be inspected directly as a pandas DataFrame or exported as a CSV.
 
 ---
 
-# Typical Production Pipeline
+## Extending MetaRAG
 
-```text
-                 PDFs
-                  │
-                  ▼
-        Recursive Chunking
-                  │
-                  ▼
-      SentenceTransformer Embeddings
-                  │
-                  ▼
-              FAISS Index
-                  │
-                  ▼
-          Hybrid Retrieval
-                  │
-                  ▼
-            Full Pipeline
-                  │
-                  ▼
-          Ollama / Cloud LLM
-                  │
-                  ▼
-             Generated Answer
-```
+Each major component exposes a lightweight interface.
+
+You can replace:
+
+- document loaders
+- chunking strategies
+- embedding models
+- vector databases
+- retrievers
+- generators
+
+without modifying the rest of the framework.
 
 ---
 
-# Why This Architecture?
+## Design Goals
 
-Traditional RAG systems often bundle loading, retrieval, and generation into a single implementation, making experimentation difficult.
+MetaRAG aims to keep experimentation straightforward:
 
-MetaRAG separates these concerns into interchangeable modules, allowing developers to evaluate different strategies independently while keeping the rest of the workflow unchanged.
+- independent components
+- reusable pipelines
+- reproducible benchmarks
+- simple extension points
 
----
-
-## Next Step
-
-Continue to **Examples** to see each component in action through runnable demonstrations included with MetaRAG.
+It is intended as a framework for experimenting with RAG systems rather than providing a single "best" pipeline.

@@ -1,179 +1,142 @@
-# MetaRAG Documentation
+# MetaRAG
 
-> **MetaRAG** is a modular Retrieval-Augmented Generation (RAG) framework for building, experimenting with, and benchmarking retrieval pipelines.
+> A modular framework for building, benchmarking, and experimenting with Retrieval-Augmented Generation (RAG) pipelines.
 
-MetaRAG breaks a RAG system into independent, interchangeable components. Replace any stage—loader, chunker, embeddings, retriever, or generator—without changing the rest of your application.
+MetaRAG is a student-built open-source project that separates a RAG system into interchangeable components—document loading, chunking, embeddings, retrieval, pipelines, and evaluation.
+
+Instead of assuming a single retrieval strategy is best, MetaRAG makes it easy to compare multiple pipelines on the same corpus and inspect their behaviour.
 
 ---
 
-## Architecture at a Glance
+## What can MetaRAG do?
+
+✓ Build complete RAG pipelines
+
+✓ Mix and match retrieval components
+
+✓ Compare retrieval pipelines
+
+✓ Benchmark retrieval quality
+
+✓ Inspect intermediate retrieval results
+
+✓ Save benchmark results for later analysis
+
+---
+
+## A Typical Workflow
 
 ```text
-                        MetaRAG Workflow
+Documents
+   │
+   ├── Load
+   ├── Chunk
+   ├── Embed
+   ├── Retrieve
+   ├── Generate
+   └── Benchmark
+```
 
-    Documents
-        │
-        ▼
- ┌─────────────────┐
- │ Document Loader │
- └─────────────────┘
-        │
-        ▼
- ┌─────────────────┐
- │    Chunker      │
- └─────────────────┘
-        │
-        ▼
- ┌─────────────────┐
- │   Embeddings    │
- └─────────────────┘
-        │
-        ▼
- ┌─────────────────┐
- │   Vector Store  │
- └─────────────────┘
-        │
-        ▼
- ┌─────────────────┐
- │    Retriever    │
- └─────────────────┘
-        │
-        ▼
- ┌─────────────────┐
- │    Pipeline     │
- └─────────────────┘
-        │
-        ▼
- ┌─────────────────┐
- │    Generator    │
- └─────────────────┘
-        │
-        ▼
-      Answer
+Benchmarking isn't a separate utility—it is part of the development workflow.
+
+---
+
+## Example
+
+```python
+from metarag import MetaRAG
+
+rag = MetaRAG(
+    docs="data",
+    embeddings=...,
+    generator=...
+)
+
+rag.fit()
+
+answer = rag.ask(
+    "What is the main topic of this document?"
+)
+
+print(answer.text)
 ```
 
 ---
 
-# Features
-
-| Feature | Description |
-|----------|-------------|
-| 📄 Document Loading | Load PDFs, text files and Markdown documents |
-| ✂️ Multiple Chunkers | Six interchangeable chunking strategies |
-| 🧠 Pluggable Embeddings | Works with local or cloud embedding models |
-| 🗂 Multiple Vector Stores | InMemory, FAISS and Chroma support |
-| 🔍 Multiple Retrievers | Dense, BM25, Hybrid and MMR retrieval |
-| ⚙️ Retrieval Pipelines | Straight, MultiQuery, HyDE, Reranked and Full pipelines |
-| 🤖 LLM Generation | Compatible with Ollama and custom generators |
-| 🧩 Extensible | Implement your own modules using simple interfaces |
-
----
-
-# Project Structure
+## Example Output
 
 ```text
-metarag/
-│
-├── core/
-│   ├── loader.py
-│   ├── chunker.py
-│   ├── embeddings.py
-│   ├── vectordb.py
-│   └── retriever.py
-│
-├── pipelines/
-│   ├── pipeline.py
-│   └── generator.py
-│
-├── examples/
-│
-├── tests/
-│
-└── docs/
+DocumentLoader Report
+------------------------------
+
+Files Loaded : 8
+Files Skipped: 0
+
+Documents Extracted : 101
+
+Chunker
+------------------------------
+
+Chunks Generated : 333
+
+Benchmark
+------------------------------
+
+Benchmark rows : 595
+
+Router thresholds saved.
+
+Benchmark CSV saved.
 ```
 
 ---
 
-# Documentation
+## Package Structure
 
-| Guide | Purpose |
-|------|---------|
-| **Installation** | Install MetaRAG and optional dependencies |
-| **Quick Start** | Build your first RAG pipeline in minutes |
-| **Architecture** | Understand how each module works together |
-| **Examples** | Run complete demonstrations of every module |
-| **API Reference** | Explore the public classes and interfaces |
+```text
+metarag
+├── core/          # Loading, chunking, retrieval
+├── pipelines/     # Retrieval pipelines
+├── Evaluator/     # Evaluation & scoring
+├── router/        # Query profiling & routing
+├── metarag.py     # High-level framework
+└── defaults.py    # Global configuration
+```
 
 ---
 
-# Example Progression
+## Documentation
 
-MetaRAG includes runnable examples that gradually build a complete RAG pipeline.
+| Guide | Description |
+|-------|-------------|
+| Installation | Install MetaRAG and optional dependencies |
+| Quick Start | Build your first pipeline |
+| Architecture | Understand the framework design |
+| Examples | Runnable demonstrations |
+| API Reference | Public classes and interfaces |
+
+---
+
+## Included Examples
 
 ```text
 loader_demo.py
-        │
-        ▼
 chunker_demo.py
-        │
-        ▼
 embeddings_demo.py
-        │
-        ▼
-vectordb_demo.py
-        │
-        ▼
+vector_db_demo.py
 retriever_demo.py
-        │
-        ▼
 pipeline_demo.py
-        │
-        ▼
-full_rag_demo.py
+metarag_demo.py
 ```
 
-Each example introduces one new component while reusing the previous ones.
+Each example focuses on one component before combining everything in `metarag_demo.py`.
 
 ---
 
-# Design Principles
+## Project Status
 
-### Modular
+MetaRAG is an actively developed student project.
 
-Every component can be used independently or replaced with a custom implementation.
+The framework is intended for experimentation and learning. APIs may evolve before a stable `1.0` release.
 
-### Extensible
-
-Simple interfaces make it easy to integrate your own loaders, embedding models, retrievers, vector databases, and generators.
-
-### Lightweight
-
-Minimal abstractions with sensible defaults for rapid experimentation.
-
----
-
-# Getting Started
-
-If this is your first time using MetaRAG, follow the documentation in this order:
-
-```text
-Installation
-      │
-      ▼
-Quick Start
-      │
-      ▼
-Architecture
-      │
-      ▼
-Examples
-      │
-      ▼
-API Reference
-```
-
----
-
-## Next Step
-
-➡ Continue with **Installation** to install MetaRAG and its optional dependencies.
+Feedback, bug reports, and contributions are always welcome.

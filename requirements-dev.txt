@@ -14,5 +14,9 @@ mypy>=1.10
 build>=1.2
 twine>=5.1
 
-# Optional Git hooks
+# Docs
+mkdocs>=1.6
+mkdocs-material>=9.5
+
+# Git hooks
 pre-commit>=3.8

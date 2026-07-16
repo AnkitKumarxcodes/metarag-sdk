@@ -1,112 +1,172 @@
 # Installation
 
-This guide walks you through installing **MetaRAG**, optional dependencies, and verifying that your environment is ready.
+MetaRAG requires **Python 3.10+** and can be installed with only the components you need.
 
 ---
 
-# Requirements
-
-| Requirement | Version |
-|-------------|---------|
-| Python | 3.10+ |
-| pip | Latest Recommended |
-| Operating System | Windows, Linux, macOS |
-
----
-
-# Install MetaRAG
-
-Install the base package.
+## Install
 
 ```bash
-pip install metarag
+pip install metarag-sdk
 ```
 
-The base installation contains the core RAG components:
+The base installation includes the core framework:
 
 - Document Loader
 - Chunker
-- Embeddings Interface
+- Embedding Interface
 - Vector Database Interface
 - Retrievers
 - Pipelines
-- Generator Interface
+- MetaRAG Framework
 
 ---
 
-# Optional Dependencies
+## Optional Components
 
-Install only the components you need.
+Some features require additional packages.
 
-## PDF Support
+| Feature | Install |
+|---------|---------|
+| PDF Support | `pip install metarag-sdk[pdf]` |
+| ChromaDB | `pip install metarag-sdk[chroma]` |
+| FAISS | `pip install metarag-sdk[faiss]` |
+| NLTK Sentence Chunking | `pip install metarag-sdk[nltk]` |
+| Cross-Encoder Reranker | `pip install metarag-sdk[rerank]` |
+| Ollama Generator | `pip install metarag-sdk[ollama]` |
 
-Required for loading PDF documents.
-
-```bash
-pip install metarag[pdf]
-```
-
-Equivalent package:
-
-```bash
-pip install pypdf
-```
-
----
-
-## FAISS Vector Store
-
-For high-performance similarity search.
+Or install everything:
 
 ```bash
-pip install metarag[faiss]
-```
-
-Equivalent package:
-
-```bash
-pip install faiss-cpu
+pip install metarag-sdk[all]
 ```
 
 ---
 
-## Chroma Vector Store
-
-Persistent local vector database.
+## Verify Installation
 
 ```bash
-pip install metarag[chroma]
+python -c "import metarag; print(metarag.__version__)"
 ```
 
-Equivalent package:
+Example
 
-```bash
-pip install chromadb
+```text
+0.3.0
 ```
 
 ---
 
-## Ollama Support
+## Development Installation
 
-For local LLM inference.
+Clone the repository.
 
 ```bash
-pip install metarag[ollama]
+git clone https://github.com/AnkitKumarxcodes/MetaRAG---Intelligent-Pipeline-Selection-Engine.git
+
+cd MetaRAG
 ```
 
-Then install any Ollama model.
+Create a virtual environment.
+
+**Windows**
+
+```bash
+python -m venv .venv
+
+.venv\Scripts\activate
+```
+
+**Linux / macOS**
+
+```bash
+python3 -m venv .venv
+
+source .venv/bin/activate
+```
+
+Install in editable mode.
+
+```bash
+pip install -e .
+```
+
+Development dependencies
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+---
+
+## Run Examples
+
+MetaRAG includes small demos for each major component.
+
+```text
+examples/
+├── loader_demo.py
+├── chunker_demo.py
+├── embeddings_demo.py
+├── vector_db_demo.py
+├── retriever_demo.py
+├── pipeline_demo.py
+└── metarag_demo.py
+```
 
 Example:
 
 ```bash
-ollama pull mistral
+python examples/loader_demo.py
 ```
 
-or
+Example output
+
+```text
+DocumentLoader Report
+------------------------------
+
+Files Loaded : 8
+Files Skipped: 0
+
+Documents Extracted : 101
+```
+
+---
+
+## Run Tests
+
+Run the complete test suite.
 
 ```bash
-ollama pull llama3
+pytest
 ```
+
+Or test individual modules.
+
+```bash
+pytest tests/test_loader.py
+
+pytest tests/test_chunker.py
+
+pytest tests/test_retriever.py
+```
+
+---
+
+## Common Issues
+
+### PDF files are skipped
+
+Install PDF support.
+
+```bash
+pip install metarag-sdk[pdf]
+```
+
+---
+
+### Ollama connection failed
 
 Start the Ollama server.
 
@@ -116,217 +176,16 @@ ollama serve
 
 ---
 
-## Sentence Transformers
+### Editable install fails
 
-Recommended for local embeddings.
-
-```bash
-pip install sentence-transformers
-```
-
-Popular models include:
-
-- all-MiniLM-L6-v2
-- all-mpnet-base-v2
-- bge-base-en-v1.5
-
----
-
-# Development Installation
-
-Clone the repository.
+Upgrade packaging tools.
 
 ```bash
-git clone <repository-url>
-
-cd MetaRAG
-```
-
-Create a virtual environment.
-
-```bash
-python -m venv .venv
-```
-
-Activate it.
-
-### Windows
-
-```bash
-.venv\Scripts\activate
-```
-
-### Linux / macOS
-
-```bash
-source .venv/bin/activate
-```
-
-Install MetaRAG in editable mode.
-
-```bash
-pip install -e .
-```
-
-Install development dependencies.
-
-```bash
-pip install pytest
+python -m pip install --upgrade pip setuptools wheel
 ```
 
 ---
 
-# Verify Installation
+## Next
 
-Run the following command.
-
-```bash
-python -c "import metarag; print('MetaRAG installed successfully!')"
-```
-
-Expected output:
-
-```text
-MetaRAG installed successfully!
-```
-
----
-
-# Run Examples
-
-Navigate to the project directory.
-
-```bash
-cd examples
-```
-
-Example:
-
-```bash
-python loader_demo.py
-```
-
-Other available demos:
-
-```text
-loader_demo.py
-
-chunker_demo.py
-
-embeddings_demo.py
-
-vectordb_demo.py
-
-retriever_demo.py
-
-pipeline_demo.py
-
-full_rag_demo.py
-```
-
----
-
-# Run Tests
-
-Execute the complete test suite.
-
-```bash
-pytest
-```
-
-Or test an individual module.
-
-```bash
-pytest tests/test_loader.py
-
-pytest tests/test_chunker.py
-
-pytest tests/test_embeddings.py
-
-pytest tests/test_vectordb.py
-
-pytest tests/test_retriever.py
-
-pytest tests/test_pipelines.py
-
-pytest tests/test_generator.py
-```
-
----
-
-# Installation Overview
-
-```text
-                Install MetaRAG
-                      │
-                      ▼
-             Optional Dependencies
-      ┌──────────┬──────────┬──────────┐
-      ▼          ▼          ▼          ▼
-    PDF       FAISS      Chroma     Ollama
-      │          │          │          │
-      └──────────┴──────────┴──────────┘
-                      │
-                      ▼
-             Verify Installation
-                      │
-                      ▼
-                Run Examples
-                      │
-                      ▼
-                 Run Tests
-```
-
----
-
-# Troubleshooting
-
-### PDFs are skipped
-
-Install PDF support.
-
-```bash
-pip install metarag[pdf]
-```
-
----
-
-### Ollama connection failed
-
-Ensure the server is running.
-
-```bash
-ollama serve
-```
-
-Verify installed models.
-
-```bash
-ollama list
-```
-
----
-
-### FAISS import error
-
-Install the FAISS dependency.
-
-```bash
-pip install faiss-cpu
-```
-
----
-
-### Chroma import error
-
-Install ChromaDB.
-
-```bash
-pip install chromadb
-```
-
----
-
-## Next Step
-
-➡ Continue with **Quick Start** to build your first Retrieval-Augmented Generation pipeline using MetaRAG.
+Continue to **Quick Start** to build your first RAG pipeline using MetaRAG.

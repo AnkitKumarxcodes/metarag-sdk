@@ -1,395 +1,245 @@
 # Examples
 
-MetaRAG includes a collection of runnable examples that demonstrate each module independently before combining them into a complete Retrieval-Augmented Generation (RAG) pipeline.
+MetaRAG includes small, focused examples that demonstrate each component independently before combining everything into a complete RAG workflow.
 
-All examples can be found in the `examples/` directory.
+Run any example with:
 
-```text
-examples/
-│
-├── loader_demo.py
-├── chunker_demo.py
-├── embeddings_demo.py
-├── vectordb_demo.py
-├── retriever_demo.py
-├── pipeline_demo.py
-└── full_rag_demo.py
+```bash
+python examples/<example_name>.py
 ```
 
 ---
 
-# Learning Path
-
-The examples are designed to be explored in sequence.
-
-```text
-loader_demo.py
-        │
-        ▼
-chunker_demo.py
-        │
-        ▼
-embeddings_demo.py
-        │
-        ▼
-vectordb_demo.py
-        │
-        ▼
-retriever_demo.py
-        │
-        ▼
-pipeline_demo.py
-        │
-        ▼
-full_rag_demo.py
-```
-
-Each example introduces one new module while building upon the previous ones.
-
----
-
-# loader_demo.py
-
-Demonstrates the document loading API.
-
-Topics covered:
-
-- Loading documents from a directory
-- Viewing extracted documents
-- Loading reports
-- Loaded vs skipped files
-- File type summaries
-
-Run:
+## Document Loader
 
 ```bash
 python examples/loader_demo.py
 ```
 
-Example Output
+Loads documents from a directory and reports what was successfully processed.
+
+Example output
 
 ```text
-Documents Loaded : 101
+DocumentLoader Report
+------------------------------
 
 Files Loaded : 8
+Files Skipped: 0
 
-Files Skipped : 0
-
-Loaded Summary
-Skipped Summary
+Documents Extracted : 101
 ```
 
 ---
 
-# chunker_demo.py
-
-Demonstrates every available chunking strategy.
-
-Topics covered:
-
-- Fixed Chunking
-- Recursive Chunking
-- Semantic Chunking
-- Sentence Chunking
-- Sliding Window
-- Markdown Chunking
-
-Run:
+## Chunking
 
 ```bash
 python examples/chunker_demo.py
 ```
 
-Example Output
+Splits documents into chunks using the selected chunking strategy.
+
+Example output
 
 ```text
-Strategy : Recursive
+Chunker Report
+------------------------------
 
-Chunks Generated : 322
+Strategy          : recursive
+Chunk Size        : 500
+Chunk Overlap     : 50
 
-First Chunk
-
-Metadata
-
-Preview
+Chunks Generated  : 333
 ```
 
 ---
 
-# embeddings_demo.py
-
-Demonstrates embedding generation and caching.
-
-Topics covered:
-
-- Single query embeddings
-- Batch embeddings
-- Disk caching
-- Cache persistence
-- Cache reuse
-
-Run:
+## Embeddings
 
 ```bash
 python examples/embeddings_demo.py
 ```
 
-Example Output
+Generates embeddings and demonstrates the caching layer.
+
+Example output
 
 ```text
-Embedding Dimension : 384
+Generating embeddings...
 
-Documents Embedded : 322
+[Embeddings] 333/333
 
-Cache Files : 322
+Cached embeddings saved.
 ```
 
 ---
 
-# vectordb_demo.py
-
-Demonstrates vector indexing and similarity search.
-
-Topics covered:
-
-- Building a vector index
-- Similarity search
-- Top-k retrieval
-- Supported vector stores
-
-Run:
+## Vector Database
 
 ```bash
-python examples/vectordb_demo.py
+python examples/vector_db_demo.py
 ```
 
-Example Output
+Builds a vector index and performs similarity search.
+
+Example output
 
 ```text
-Built Index : 322 vectors
+Building vector index...
 
-Top 3 Results
+Indexed Chunks : 333
 
-Similarity Scores
+Top-3 Results
+
+1. ...
+2. ...
+3. ...
 ```
 
 ---
 
-# retriever_demo.py
-
-Compare retrieval algorithms on the same query.
-
-Topics covered:
-
-- Dense Retrieval
-- BM25 Retrieval
-- Hybrid Retrieval
-- Maximum Marginal Relevance (MMR)
-
-Run:
+## Retrieval
 
 ```bash
 python examples/retriever_demo.py
 ```
 
-Example Output
+Compare different retrieval strategies.
+
+Included retrievers
+
+- BM25
+- Dense
+- Hybrid
+- MMR
+
+Example output
 
 ```text
-BM25
+Retriever : Hybrid
 
-Dense
+Retrieved Chunks : 3
 
-Hybrid
-
-MMR
-
-Top 3 Retrieved Chunks
+Latency : 2 ms
 ```
 
 ---
 
-# pipeline_demo.py
-
-Demonstrates retrieval optimization pipelines.
-
-Topics covered:
-
-- Straight Pipeline
-- MultiQuery
-- HyDE
-- Cross-Encoder Reranking
-- Full Pipeline
-
-Run:
+## Pipelines
 
 ```bash
 python examples/pipeline_demo.py
 ```
 
-Example Output
+Runs every built-in retrieval pipeline.
+
+Included pipelines
+
+- Straight
+- MultiQuery
+- HyDE
+- Reranked
+- Full
+
+Example output
 
 ```text
-Straight Pipeline
+Pipeline : Full
 
-↓
+Retrieved Chunks : 3
 
-Retrieved Chunks
-
-MultiQuery
-
-↓
-
-Expanded Queries
-
-↓
-
-Deduplicated Results
-
-HyDE
-
-↓
-
-Generated Hypothesis
-
-↓
-
-Retrieved Chunks
-
-Reranked
-
-↓
-
-Cross-Encoder Scores
-
-Full
-
-↓
-
-Retrieve
-
-↓
-
-Rerank
-
-↓
-
-Deduplicate
+Pipeline completed.
 ```
 
 ---
 
-# full_rag_demo.py
-
-The complete MetaRAG workflow.
-
-This example combines every module into an end-to-end Retrieval-Augmented Generation system.
-
-Workflow
-
-```text
-Documents
-      │
-      ▼
-Loader
-      │
-      ▼
-Chunker
-      │
-      ▼
-Embeddings
-      │
-      ▼
-Vector Database
-      │
-      ▼
-Retriever
-      │
-      ▼
-Pipeline
-      │
-      ▼
-Generator
-      │
-      ▼
-Answer
-```
-
-Run:
+# Complete Framework Demo
 
 ```bash
-python examples/full_rag_demo.py
+python examples/metarag_demo.py
 ```
 
-Example Output
+Demonstrates the complete MetaRAG workflow.
 
 ```text
-Question
-
-↓
-
-Retrieved Context
-
-↓
-
-Generated Answer
-
-↓
-
-Latency Statistics
+fit()
+   ↓
+ask()
+   ↓
+benchmark()
+   ↓
+leaderboard()
+   ↓
+dashboard()
+   ↓
+report()
+   ↓
+save()
 ```
 
----
-
-# Which Example Should I Run?
-
-| If you want to... | Run |
-|-------------------|-----|
-| Load documents | `loader_demo.py` |
-| Compare chunking strategies | `chunker_demo.py` |
-| Generate embeddings | `embeddings_demo.py` |
-| Build a vector database | `vectordb_demo.py` |
-| Compare retrieval methods | `retriever_demo.py` |
-| Compare retrieval pipelines | `pipeline_demo.py` |
-| Build a complete RAG application | `full_rag_demo.py` |
-
----
-
-# Recommended Order
-
-If you're using MetaRAG for the first time, follow this sequence.
+Typical output
 
 ```text
-1. loader_demo.py
+Files Loaded        : 8
 
-        ↓
+Documents Extracted : 101
 
-2. chunker_demo.py
+Chunks Generated    : 333
 
-        ↓
+Pipelines Built     : 7
 
-3. embeddings_demo.py
+Benchmark Rows      : 595
 
-        ↓
+Router Thresholds Saved
 
-4. vectordb_demo.py
-
-        ↓
-
-5. retriever_demo.py
-
-        ↓
-
-6. pipeline_demo.py
-
-        ↓
-
-7. full_rag_demo.py
+Benchmark CSV Saved
 ```
 
-Each example introduces one additional concept, making it easier to understand how the complete system is assembled.
+The demo also generates project artifacts such as:
+
+```text
+benchmark.csv
+
+config.json
+
+router_thresholds.json
+```
 
 ---
 
-## Next Step
+## Suggested Order
 
-Continue to **API Reference** for detailed documentation of MetaRAG's public classes, methods, and interfaces.
+If you're new to MetaRAG, explore the examples in this order.
+
+```text
+loader
+   ↓
+chunker
+   ↓
+embeddings
+   ↓
+vector database
+   ↓
+retriever
+   ↓
+pipeline
+   ↓
+metarag
+```
+
+Each example introduces one new concept while reusing the previous components.
+
+---
+
+## Experiment
+
+After running the demos, try changing:
+
+- chunk size
+- retrieval strategy
+- pipeline
+- embedding model
+- generator
+
+Then compare the benchmark results to see how different configurations affect retrieval performance.

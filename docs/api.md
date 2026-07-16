@@ -1,414 +1,275 @@
 # API Reference
 
-This page provides a quick reference for MetaRAG's public classes and interfaces.
+This page documents the stable public API exposed by MetaRAG.
 
-For detailed examples, see the **Examples** section.
-
----
-
-# Package Overview
-
-```text
-metarag
-│
-├── DocumentLoader
-├── Chunker
-├── CachedEmbeddings
-│
-├── InMemoryVectorDB
-├── FAISSVectorDB
-├── ChromaVectorDB
-│
-├── DenseRetriever
-├── BM25Retriever
-├── HybridRetriever
-├── MMRRetriever
-│
-├── StraightPipeline
-├── MultiQueryPipeline
-├── HyDEPipeline
-├── RerankedPipeline
-├── FullPipeline
-│
-├── GeneratorWrapper
-└── OllamaGenerator
-```
+For lower-level building blocks (retrievers, vector databases, chunkers, etc.), see the corresponding component documentation.
 
 ---
 
-# DocumentLoader
-
-Loads documents from a directory and extracts their content.
+# High-Level API
 
 ```python
-loader = DocumentLoader("documents")
-
-documents = loader.load()
+from metarag import MetaRAG
 ```
+
+`MetaRAG` is the primary interface for building, benchmarking and experimenting with Retrieval-Augmented Generation (RAG) systems.
+
+---
 
 ## Constructor
 
 ```python
-DocumentLoader(
-    directory
+MetaRAG(
+    docs,
+    embeddings,
+    generator,
+    ...
 )
 ```
 
-## Methods
+### Required Parameters
 
-| Method | Description |
-|----------|-------------|
-| `load()` | Load all supported documents |
-
-## Returns
-
-```text
-DocumentList
-```
+| Parameter | Description |
+|-----------|-------------|
+| `docs` | Document directory or collection |
+| `embeddings` | Embedding model or embedding interface |
+| `generator` | Language model used for answer generation |
 
 ---
 
-# Chunker
+# Core Methods
 
-Splits documents into retrieval chunks.
+## fit()
 
-```python
-chunker = Chunker(
-    strategy="recursive"
-)
-
-chunks = chunker.chunk_documents(documents)
-```
-
-## Constructor
+Builds the retrieval system.
 
 ```python
-Chunker(
-    strategy="recursive",
-    chunk_size=500,
-    overlap=50
-)
+rag.fit()
 ```
 
-## Methods
+Typical tasks include:
 
-| Method | Description |
-|----------|-------------|
-| `chunk_documents()` | Chunk loaded documents |
-
-## Strategies
-
-```text
-fixed
-
-recursive
-
-semantic
-
-sentence
-
-sliding_window
-
-markdown
-```
+- loading documents
+- chunk generation
+- embedding generation
+- vector index construction
+- pipeline initialization
 
 ---
 
-# CachedEmbeddings
+## ask()
 
-Wraps any embedding model and automatically caches generated vectors.
-
-```python
-embedder = CachedEmbeddings(model)
-
-vectors = embedder.embed_documents(texts)
-```
-
-## Methods
-
-| Method | Description |
-|----------|-------------|
-| `embed()` | Embed a single text |
-| `embed_query()` | Embed a query |
-| `embed_documents()` | Batch embedding |
-
----
-
-# Vector Databases
-
-Stores embeddings for similarity search.
-
-Available implementations:
-
-```text
-InMemoryVectorDB
-
-FAISSVectorDB
-
-ChromaVectorDB
-```
-
-Typical usage:
+Retrieves relevant context and generates an answer.
 
 ```python
-db.build(
-    chunks,
-    embeddings
+answer = rag.ask(
+    "What is Retrieval-Augmented Generation?"
 )
 ```
-
-## Common Methods
-
-| Method | Description |
-|----------|-------------|
-| `build()` | Build the vector index |
-| `search()` | Similarity search |
-
----
-
-# Retrievers
-
-Retrieve the most relevant chunks for a query.
-
-Available implementations.
-
-```text
-DenseRetriever
-
-BM25Retriever
-
-HybridRetriever
-
-MMRRetriever
-```
-
-Typical usage.
-
-```python
-results = retriever.retrieve(
-    query,
-    k=5
-)
-```
-
-## Methods
-
-| Method | Description |
-|----------|-------------|
-| `retrieve()` | Retrieve top-k relevant chunks |
-
----
-
-# Pipelines
-
-Retrieval pipelines improve retrieval quality before generation.
-
-Available pipelines.
-
-```text
-StraightPipeline
-
-MultiQueryPipeline
-
-HyDEPipeline
-
-RerankedPipeline
-
-FullPipeline
-```
-
-Typical usage.
-
-```python
-pipeline = StraightPipeline(
-    retriever
-)
-
-result = pipeline.run(
-    query,
-    k=3
-)
-```
-
-## Methods
-
-| Method | Description |
-|----------|-------------|
-| `run()` | Execute the retrieval pipeline |
-
-## Returned Object
-
-```python
-{
-    "query": "...",
-    "chunks": [...],
-    "pipeline": "...",
-    "hypothesis": ...
-}
-```
-
----
-
-# GeneratorWrapper
-
-Generates answers from retrieved context.
-
-```python
-generator = GeneratorWrapper(
-    OllamaGenerator()
-)
-
-answer, latency = generator.generate_text(
-    query,
-    chunks
-)
-```
-
-## Methods
-
-| Method | Description |
-|----------|-------------|
-| `generate_text()` | Generate the final answer |
 
 Returns
 
 ```python
-(text, latency_ms)
-```
-
----
-
-# OllamaGenerator
-
-Built-in generator for local Ollama models.
-
-```python
-generator = OllamaGenerator(
-    model="mistral"
-)
-```
-
-## Constructor
-
-```python
-OllamaGenerator(
-    model="mistral",
-    base_url="http://localhost:11434"
-)
-```
-
-Requires:
-
-```bash
-ollama serve
-```
-
----
-
-# Core Interfaces
-
-MetaRAG is designed around lightweight interfaces.
-
-## EmbeddingInterface
-
-Implement your own embedding model.
-
-Required methods.
-
-```python
-embed_query()
-
-embed_documents()
-```
-
----
-
-## GeneratorInterface
-
-Implement your own language model.
-
-Required method.
-
-```python
-generate(prompt)
-```
-
----
-
-# Typical Workflow
-
-```text
-DocumentLoader
-        │
-        ▼
-Chunker
-        │
-        ▼
-CachedEmbeddings
-        │
-        ▼
-VectorDB
-        │
-        ▼
-Retriever
-        │
-        ▼
-Pipeline
-        │
-        ▼
-GeneratorWrapper
-        │
-        ▼
 Answer
 ```
 
 ---
 
-# Public API Summary
+## benchmark()
 
-| Module | Primary Class |
-|---------|---------------|
-| Loader | `DocumentLoader` |
-| Chunking | `Chunker` |
-| Embeddings | `CachedEmbeddings` |
-| Vector Store | `InMemoryVectorDB`, `FAISSVectorDB`, `ChromaVectorDB` |
-| Retrieval | `DenseRetriever`, `BM25Retriever`, `HybridRetriever`, `MMRRetriever` |
-| Pipelines | `StraightPipeline`, `MultiQueryPipeline`, `HyDEPipeline`, `RerankedPipeline`, `FullPipeline` |
-| Generation | `GeneratorWrapper`, `OllamaGenerator` |
+Evaluate every configured pipeline using the same set of queries.
 
----
-
-# Extension Points
-
-MetaRAG is designed to be extended.
-
-You can implement custom:
-
-```text
-✓ Document Loaders
-
-✓ Chunking Strategies
-
-✓ Embedding Models
-
-✓ Vector Databases
-
-✓ Retrieval Algorithms
-
-✓ Retrieval Pipelines
-
-✓ Language Models
+```python
+df = rag.benchmark(
+    queries,
+    retrieval_only=True
+)
 ```
 
-As long as the required interface is implemented, MetaRAG components remain interchangeable.
+Returns
+
+```python
+pandas.DataFrame
+```
+
+Also saves
+
+```text
+benchmark.csv
+```
+
+when enabled.
 
 ---
 
-## Need More Help?
+## leaderboard()
 
-See:
+Display pipeline rankings.
 
-- **Installation** — Environment setup
-- **Quick Start** — Build your first RAG pipeline
-- **Architecture** — Internal workflow
-- **Examples** — Runnable demonstrations
+```python
+rag.leaderboard()
+```
+
+---
+
+## dashboard()
+
+Display a summary of benchmark statistics.
+
+```python
+rag.dashboard()
+```
+
+---
+
+## report()
+
+Generate a benchmark summary.
+
+```python
+rag.report()
+```
+
+---
+
+## inspect()
+
+Inspect retrieved chunks for a query.
+
+```python
+rag.inspect(
+    query,
+    k=3
+)
+```
+
+---
+
+## trace()
+
+Trace a query through a specific pipeline.
+
+```python
+rag.trace(
+    query,
+    pipeline_name="full"
+)
+```
+
+---
+
+## explain()
+
+Explain routing or retrieval decisions.
+
+```python
+rag.explain(query)
+```
+
+---
+
+## analyze_query()
+
+Compute descriptive statistics for a query.
+
+```python
+rag.analyze_query(query)
+```
+
+---
+
+## analyze_corpus()
+
+Analyze the indexed corpus.
+
+```python
+rag.analyze_corpus()
+```
+
+---
+
+## save()
+
+Save the current project.
+
+```python
+rag.save()
+```
+
+Typical output
+
+```text
+config.json
+
+benchmark.csv
+
+router_thresholds.json
+```
+
+---
+
+## load()
+
+Load a previously saved project.
+
+```python
+rag.load(path)
+```
+
+---
+
+# Configuration
+
+Global defaults can be modified before constructing new components.
+
+```python
+from metarag import DEFAULTS
+
+DEFAULTS.chunk_size = 500
+
+DEFAULTS.k = 4
+
+DEFAULTS.hybrid_alpha = 0.5
+```
+
+These values are used when explicit parameters are not provided.
+
+---
+
+# Toolkit API
+
+MetaRAG components may also be used independently.
+
+```python
+from metarag import DocumentLoader
+
+from metarag import Chunker
+
+from metarag import HybridRetriever
+
+from metarag import InMemoryVectorDB
+
+from metarag import Evaluator
+```
+
+This allows developers to build custom retrieval pipelines while reusing individual components.
+
+---
+
+# Public Modules
+
+| Module | Purpose |
+|---------|---------|
+| `core` | Loading, chunking, embeddings, retrieval |
+| `pipelines` | Retrieval pipelines and generators |
+| `Evaluator` | Evaluation and scoring |
+| `router` | Query profiling and routing |
+| `defaults` | Global framework configuration |
+
+---
+
+# Version
+
+This documentation describes the public API available in **MetaRAG v0.3.0**.
+
+Interfaces may evolve before the first stable `1.0` release.

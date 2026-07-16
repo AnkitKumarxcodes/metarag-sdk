@@ -923,7 +923,7 @@ class MetaRAG:
             **qp,   
             "query_length": qp["query_length"], "char_count": qp["char_count"],
             "is_short": qp["is_short"], "is_long": qp["is_long"],
-            "num_docs": len(self._chunks) if self._chunks else 0,
+            "num_chunks": len(self._chunks) if self._chunks else 0,
             **probe,
         }
 

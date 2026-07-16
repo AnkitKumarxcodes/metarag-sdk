@@ -1,291 +1,174 @@
 # Quick Start
 
-This guide demonstrates how to build a complete Retrieval-Augmented Generation (RAG) pipeline using MetaRAG.
+This guide walks through building your first RAG system with MetaRAG.
 
 By the end, you will:
 
 - Load documents
-- Chunk them
-- Create embeddings
-- Build a vector database
-- Retrieve relevant context
-- Generate an answer using an LLM
+- Build the retrieval system
+- Ask questions
+- Benchmark multiple pipelines
 
 ---
 
-# Complete Workflow
-
-```text
-Documents
-    │
-    ▼
-DocumentLoader
-    │
-    ▼
-Chunker
-    │
-    ▼
-Embeddings
-    │
-    ▼
-Vector Database
-    │
-    ▼
-Retriever
-    │
-    ▼
-Pipeline
-    │
-    ▼
-Generator
-    │
-    ▼
-Answer
-```
-
----
-
-# Step 1 — Load Documents
+## 1. Import MetaRAG
 
 ```python
-from pathlib import Path
-from metarag import DocumentLoader
-
-loader = DocumentLoader(Path("documents"))
-
-documents = loader.load()
-
-print(len(documents))
-```
-
-Example Output
-
-```text
-101
-```
-
----
-
-# Step 2 — Chunk Documents
-
-```python
-from metarag import Chunker
-
-chunker = Chunker(strategy="recursive")
-
-chunks = chunker.chunk_documents(documents)
-
-print(len(chunks))
-```
-
-Example Output
-
-```text
-322
-```
-
----
-
-# Step 3 — Generate Embeddings
-
-```python
+from metarag import MetaRAG
 from metarag import CachedEmbeddings
-
-embedder = CachedEmbeddings(...)
-
-embeddings = embedder.embed_documents(
-    [chunk.text for chunk in chunks]
-)
+from metarag import OllamaGenerator
 ```
-
-Each chunk is converted into a dense numerical vector.
 
 ---
 
-# Step 4 — Build a Vector Database
+## 2. Create the Framework
 
 ```python
-from metarag import InMemoryVectorDB
+embeddings = CachedEmbeddings(...)
 
-vector_db = InMemoryVectorDB()
-
-vector_db.build(
-    chunks,
-    embeddings
+rag = MetaRAG(
+    docs="tests/data",
+    embeddings=embeddings,
+    generator=OllamaGenerator(model="mistral"),
 )
 ```
 
-The vector database stores every chunk alongside its embedding for efficient similarity search.
-
 ---
 
-# Step 5 — Create a Retriever
+## 3. Build the Pipeline
 
 ```python
-from metarag import DenseRetriever
-
-retriever = DenseRetriever(
-    chunks,
-    embedder,
-    vector_db
-)
+rag.fit()
 ```
 
-Available retrievers:
+Example output
 
-| Retriever | Description |
-|------------|-------------|
-| Dense | Embedding similarity |
-| BM25 | Keyword search |
-| Hybrid | Dense + BM25 |
-| MMR | Diversity-aware retrieval |
+```text
+Files Loaded        : 8
+
+Documents Extracted : 101
+
+Chunks Generated    : 333
+
+Vector Index Built
+
+Pipelines Built     : 7
+```
 
 ---
 
-# Step 6 — Choose a Pipeline
+## 4. Ask Questions
 
 ```python
-from metarag.pipelines import StraightPipeline
-
-pipeline = StraightPipeline(retriever)
-
-result = pipeline.run(
-    "What is the main topic of this document?",
-    k=3
+answer = rag.ask(
+    "What is the main topic of this document?"
 )
+
+print(answer.text)
 ```
 
-Example Output
+Example
 
 ```text
-Pipeline : straight
-
-Retrieved Chunks : 3
+The document discusses ...
 ```
-
-Other available pipelines:
-
-- Straight
-- MultiQuery
-- HyDE
-- Reranked
-- Full
 
 ---
 
-# Step 7 — Generate the Final Answer
+## 5. Benchmark Pipelines
 
 ```python
-from metarag.pipeline.generator import (
-    OllamaGenerator,
-    GeneratorWrapper,
+queries = [
+    "Summarize the document.",
+    "What are the key findings?",
+    "List important numbers."
+]
+
+results = rag.benchmark(
+    queries,
+    retrieval_only=True
 )
-
-generator = GeneratorWrapper(
-    OllamaGenerator(model="mistral")
-)
-
-answer, latency = generator.generate_text(
-    query=result["query"],
-    chunks=result["chunks"]
-)
-
-print(answer)
 ```
 
-Example Output
+Example output
 
 ```text
-The document primarily discusses the ethical implications
-of Generative Artificial Intelligence across multiple
-domains including healthcare, education and law.
+Benchmark Rows      : 595
+
+Benchmark CSV Saved
+
+Router Thresholds Saved
+```
+
+The benchmark results are also returned as a pandas DataFrame.
+
+```python
+print(results.head())
 ```
 
 ---
 
-# Complete Pipeline
+## 6. Inspect Results
+
+```python
+rag.leaderboard()
+
+rag.dashboard()
+
+rag.report()
+```
+
+These utilities summarize benchmark performance and compare pipeline behaviour.
+
+---
+
+## 7. Save the Project
+
+```python
+rag.save()
+```
+
+Example output
 
 ```text
-PDFs
- │
- ▼
-Load Documents
- │
- ▼
-Chunk Documents
- │
- ▼
-Generate Embeddings
- │
- ▼
-Build Vector Database
- │
- ▼
-Retrieve Top-k Chunks
- │
- ▼
-Pipeline Processing
- │
- ▼
-LLM Generation
- │
- ▼
-Final Answer
+Project saved.
+
+config.json
+
+benchmark.csv
+
+router_thresholds.json
 ```
 
 ---
 
-# Running the Example
-
-A complete implementation is included with MetaRAG.
-
-```bash
-python examples/full_rag_demo.py
-```
-
-Individual module demonstrations are also available.
+## Complete Workflow
 
 ```text
-loader_demo.py
-
-chunker_demo.py
-
-embeddings_demo.py
-
-vectordb_demo.py
-
-retriever_demo.py
-
-pipeline_demo.py
+MetaRAG
+   │
+   ├── fit()
+   ├── ask()
+   ├── benchmark()
+   ├── leaderboard()
+   ├── report()
+   └── save()
 ```
 
 ---
 
-# Recommended Pipeline
+## Next Steps
 
-For most applications, the following configuration provides a good balance between retrieval quality and speed.
+Explore the individual components:
 
-```text
-Recursive Chunking
-        │
-        ▼
-SentenceTransformer Embeddings
-        │
-        ▼
-InMemoryVectorDB / FAISS
-        │
-        ▼
-Hybrid Retriever
-        │
-        ▼
-Full Pipeline
-        │
-        ▼
-Ollama Generator
-```
+- **Architecture** — framework design
+- **Examples** — runnable demonstrations
+- **API Reference** — public classes and methods
 
----
+Or start experimenting by changing:
 
-# What's Next?
-
-Continue to **Architecture** to understand how every MetaRAG component interacts internally and how to customize the pipeline for your own applications.
+- retrieval strategy
+- chunk size
+- embedding model
+- generator
+- benchmark queries
