@@ -279,7 +279,7 @@ def test_chunk_object():
 
     )
 
-    assert text == "This is a generated answer."
+    assert text == "This is a generated answer based on the retrieved context."
 
 
 def test_multiple_chunks():
@@ -306,7 +306,7 @@ def test_multiple_chunks():
 
     )
 
-    assert text == "This is a generated answer."
+    assert text == "This is a generated answer based on the retrieved context."
 
 
 def test_latency_is_float():

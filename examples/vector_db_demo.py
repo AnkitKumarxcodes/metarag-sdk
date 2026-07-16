@@ -1,7 +1,6 @@
 # examples/vector_db_demo.py
 """
-VectorDB API demo — builds a real index from your test PDFs using Ollama
-embeddings, then exercises InMemoryVectorDB's build/search/add.
+VectorDB API demo — builds a real vector index using the bundled FakeEmbeddings model.
 """
 
 from pathlib import Path

@@ -8,6 +8,19 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 loader = DocumentLoader(DATA_DIR)
 documents = loader.load(verbose=False)
 
+import nltk
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_nltk_data():
+    for resource, path in [
+        ("punkt", "tokenizers/punkt"),
+        ("punkt_tab", "tokenizers/punkt_tab"),
+    ]:
+        try:
+            nltk.data.find(path)
+        except LookupError:
+            nltk.download(resource, quiet=True)
+
 
 def test_chunker_creation():
 

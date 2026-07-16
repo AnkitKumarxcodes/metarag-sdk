@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-from metarag import MetaRAG, OllamaGenerator
+from metarag import MetaRAG
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "tests" / "data"
 
