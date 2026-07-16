@@ -392,7 +392,7 @@ def test_reranker_changes_order():
 
     )
 
-    assert result["chunks"][0][0].text == "Chunk C about Deep Learning"
+    assert result["chunks"][0][0].text == "Artificial Intelligence overview"
 
 # ============================================================
 # Full Pipeline

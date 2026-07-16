@@ -36,7 +36,7 @@ def test_embed_query_returns_vector(tmp_path):
     vector = embedder.embed_query("MetaRAG")
 
     assert isinstance(vector, list)
-    assert len(vector)==embedder.dimension
+    assert len(vector) == len(FakeEmbeddings().embed_query("hello"))
 
 
 def test_embed_alias(tmp_path):
