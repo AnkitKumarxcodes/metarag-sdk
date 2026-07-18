@@ -55,7 +55,12 @@ from .router import (
 )
 from .defaults import DEFAULTS , MetaRAGDefaults
 
-__version__ = "0.3.0"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("metarag-sdk")
+except PackageNotFoundError:
+    __version__ = "unknown"
 
 __all__ = [
     "MetaRAG", "Answer",
