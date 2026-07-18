@@ -834,6 +834,11 @@ class MetaRAG:
 
         self._log("Loading documents...")
         docs = DocumentLoader(self.docs_path).load(verbose = False)
+        docs = DocumentLoader(self.docs_path).load(verbose=False)
+
+        if docs.loaded.count == 0:
+            raise ValueError(f"No documents found at '{self.docs_path}'")
+        
         self._log(
             f"Loaded {docs.loaded.count} file(s)"
                 )
@@ -870,7 +875,9 @@ class MetaRAG:
 
     def _setup_retrievers(self):
         from .core.retriever import BM25Retriever, DenseRetriever, HybridRetriever, MMRRetriever
-
+        if not self._chunks:
+            raise ValueError("No chunks available. Run fit() on a non-empty corpus.")
+        
         self._retrievers["bm25"] = BM25Retriever(self._chunks)
         self._retrievers["dense"] = DenseRetriever(self._chunks, self.embeddings, self.vector_db)
         self._retrievers["hybrid"] = HybridRetriever(self._chunks, self.embeddings, self.vector_db)
