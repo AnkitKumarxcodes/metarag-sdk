@@ -187,3 +187,81 @@ def test_evaluator_set_preset(embeddings):
     evaluator = Evaluator(embeddings, preset="balanced")
     evaluator.set_preset("precision")
     assert evaluator.scorer.weights == WEIGHTS["precision"]
+
+
+# ─────────────────────────────────────────────────────────
+# Preset-specific latency penalty (precision/recall vs balanced)
+# ─────────────────────────────────────────────────────────
+
+def _base_score_kwargs():
+    return dict(faithfulness=0.5, relevancy=0.5, precision={"max": 0.5, "avg": 0.5, "std": 0.0},
+                coverage=0.5, redundancy=0.0)
+
+
+def test_precision_preset_applies_latency_penalty():
+    scorer = Scorer(preset="precision")
+    no_latency = scorer.score(**_base_score_kwargs(), latency_ms=0)
+    max_latency = scorer.score(**_base_score_kwargs(), latency_ms=10000)   # MAX_LATENCY_MS
+    assert no_latency.composite - max_latency.composite == pytest.approx(0.05)   # precision's latency weight
+
+
+def test_recall_preset_ignores_latency():
+    scorer = Scorer(preset="recall")
+    no_latency = scorer.score(**_base_score_kwargs(), latency_ms=0)
+    max_latency = scorer.score(**_base_score_kwargs(), latency_ms=10000)
+    assert no_latency.composite == max_latency.composite   # recall's latency weight is 0
+
+
+# ─────────────────────────────────────────────────────────
+# redundancy() averages across ALL pairs, not just the first
+# ─────────────────────────────────────────────────────────
+
+def test_redundancy_averages_across_all_pairs(embeddings):
+    two_identical = redundancy(["same text here", "same text here"], embeddings)
+    three_with_one_outlier = redundancy(
+        ["same text here", "same text here", "completely unrelated content"], embeddings
+    )
+    assert three_with_one_outlier < two_identical
+
+
+# ─────────────────────────────────────────────────────────
+# Scorer latency-penalty math (only "precision" preset has nonzero latency weight)
+# ─────────────────────────────────────────────────────────
+
+def test_precision_preset_applies_latency_penalty():
+    scorer = Scorer(preset="precision")
+    result = scorer.score(
+        faithfulness=1.0, relevancy=0.0, precision={"max": 0, "avg": 0, "std": 0},
+        coverage=0.0, redundancy=0.0, latency_ms=5000,
+    )
+    # 0.20*1.0 - 0.05*(5000/10000) = 0.175
+    assert result.composite == pytest.approx(0.175, abs=0.001)
+
+
+def test_precision_preset_latency_penalty_caps_at_max_latency():
+    scorer = Scorer(preset="precision")
+    kwargs = dict(faithfulness=1.0, relevancy=0.0, precision={"max": 0, "avg": 0, "std": 0},
+                   coverage=0.0, redundancy=0.0)
+    at_cap = scorer.score(latency_ms=10000, **kwargs)
+    way_over = scorer.score(latency_ms=999999, **kwargs)
+    assert at_cap.composite == pytest.approx(way_over.composite)
+
+
+def test_recall_preset_ignores_latency_entirely():
+    scorer = Scorer(preset="recall")
+    kwargs = dict(faithfulness=0.5, relevancy=0.5, precision={"max": 0, "avg": 0.5, "std": 0},
+                   coverage=0.5, redundancy=0.2)
+    fast = scorer.score(latency_ms=1, **kwargs)
+    slow = scorer.score(latency_ms=999999, **kwargs)
+    assert fast.composite == pytest.approx(slow.composite)
+
+
+# ─────────────────────────────────────────────────────────
+# redundancy() — averaging across more than 2 chunks
+# ─────────────────────────────────────────────────────────
+
+def test_redundancy_averages_across_all_pairs_not_just_first(embeddings):
+    all_same = redundancy(["same text here"] * 3, embeddings)
+    mixed = redundancy(["same text here", "same text here", "totally unrelated content"], embeddings)
+    assert all_same == pytest.approx(1.0, abs=0.05)
+    assert mixed < all_same

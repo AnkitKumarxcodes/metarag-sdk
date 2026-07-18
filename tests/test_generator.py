@@ -211,7 +211,9 @@ def test_retry_success():
     assert text == "Recovered"
 
 
-def test_rate_limit_retry():
+def test_rate_limit_retry(monkeypatch):
+
+    monkeypatch.setattr("time.sleep", lambda *_: None)   # real generator.py calls time.sleep(10*attempt) on 429s
 
     wrapper = GeneratorWrapper(
 
@@ -326,3 +328,65 @@ def test_latency_is_float():
     )
 
     assert isinstance(latency, float)
+
+# ============================================================
+# OllamaGenerator (mocked HTTP — no real Ollama server needed)
+# ============================================================
+
+from metarag.pipelines.generator import OllamaGenerator
+
+
+class _FakeResponse:
+    def __init__(self, status_code=200, json_data=None):
+        self.status_code = status_code
+        self._json = json_data or {}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise Exception(f"HTTP {self.status_code}")
+
+    def json(self):
+        return self._json
+
+
+def test_ollama_generator_connects_successfully(monkeypatch):
+    monkeypatch.setattr("requests.get", lambda *a, **k: _FakeResponse(200))
+    gen = OllamaGenerator(model="mistral")
+    assert gen.model == "mistral"
+
+
+def test_ollama_generator_bad_status_raises_connection_error(monkeypatch):
+    monkeypatch.setattr("requests.get", lambda *a, **k: _FakeResponse(500))
+    with pytest.raises(ConnectionError):
+        OllamaGenerator(model="mistral")
+
+
+def test_ollama_generator_unreachable_raises_connection_error(monkeypatch):
+    def raise_network_error(*a, **k):
+        raise OSError("network unreachable")
+    monkeypatch.setattr("requests.get", raise_network_error)
+    with pytest.raises(ConnectionError):
+        OllamaGenerator(model="mistral")
+
+
+def test_ollama_generator_generate_calls_api_and_strips_response(monkeypatch):
+    monkeypatch.setattr("requests.get", lambda *a, **k: _FakeResponse(200))
+    monkeypatch.setattr("requests.post", lambda *a, **k: _FakeResponse(200, {"response": "  Paris  "}))
+    gen = OllamaGenerator(model="mistral")
+    assert gen.generate("What is the capital of France?") == "Paris"
+
+
+# ============================================================
+# Retry exhaustion — rate-limited on every attempt, never recovers
+# ============================================================
+
+class AlwaysRateLimitedGenerator(GeneratorInterface):
+    def generate(self, prompt):
+        raise Exception("429 rate_limit")
+
+
+def test_rate_limit_on_every_attempt_exhausts_retries(monkeypatch):
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+    wrapper = GeneratorWrapper(AlwaysRateLimitedGenerator())
+    with pytest.raises(RuntimeError):
+        wrapper.generate_text("AI", ["Chunk"])

@@ -243,7 +243,7 @@ class FAISSVectorDB(VectorDBInterface):
                 "Missing optional dependency 'faiss-cpu'.\nUse pip to install chromadb: pip install metarag[faiss]"
             )
         
-        self.faiss = faiss.faiss
+        self.faiss = faiss
         self.index = None
         self.chunks = []
         self.embeddings = None

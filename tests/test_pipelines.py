@@ -670,3 +670,45 @@ def test_chunk_text_object():
 # ============================================================
 # End
 # ============================================================
+
+# ============================================================
+# Real Reranker — cross-encoder path (CrossEncoder itself mocked,
+# so this tests Reranker's OWN merge/sort logic, not model weights)
+# ============================================================
+
+def test_reranker_real_cross_encoder_path(monkeypatch):
+    pytest.importorskip("sentence_transformers")
+    import sentence_transformers
+
+    class FakeCrossEncoder:
+        def __init__(self, model_name):
+            pass
+        def predict(self, pairs):
+            return [len(b) for _, b in pairs]   # longer text scores higher, deterministic
+
+    monkeypatch.setattr(sentence_transformers, "CrossEncoder", FakeCrossEncoder)
+
+    reranker = Reranker()
+    assert reranker.model is not None
+
+    chunks = [("short", 0.5), ("a much longer candidate text", 0.4)]
+    result = reranker.rerank("query", chunks, k=2)
+    assert result[0][0] == "a much longer candidate text"
+
+
+# ============================================================
+# Exact k-truncation after dedup (over-production from MultiQuery)
+# ============================================================
+
+class VaryingRetriever:
+    """Unlike FakeRetriever, returns query-specific text so MultiQuery's
+    per-variant retrieval genuinely over-produces before truncation —
+    exercises the `chunks[:k]` fix, not just dedup collapsing duplicates."""
+    def retrieve(self, query, k=4):
+        return [(f"{query} result {i}", 1.0 - i * 0.01) for i in range(k)]
+
+
+def test_multiquery_pipeline_truncates_exactly_to_k_after_dedup():
+    pipe = MultiQueryPipeline(VaryingRetriever(), FakeGenerator(), n_variants=3)
+    result = pipe.run("AI", k=2)
+    assert len(result["chunks"]) == 2   # exact, not just "<= k"

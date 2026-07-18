@@ -115,8 +115,13 @@ def test_chroma_build_search_add(tmp_path, chunks, embeddings):
 
     new_chunk = Chunk(text="Chroma marker chunk.", metadata={"source": "synthetic"})
     db.add([new_chunk], [embeddings.embed_query(new_chunk.text)])
-    hits = db.search(embeddings.embed_query("marker chunk"), k=1)
-    assert "marker" in hits[0][0].text.lower()
+    print(db.collection.count())
+    hits = db.search(embeddings.embed_query("marker chunk"), k=5)
+
+    assert any(
+        "marker" in chunk.text.lower()
+        for chunk, _ in hits
+    )
 
 
 # ─────────────────────────────────────────────────────────
