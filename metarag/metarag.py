@@ -834,14 +834,14 @@ class MetaRAG:
 
         self._log("Loading documents...")
         docs = DocumentLoader(self.docs_path).load(verbose = False)
-        if not docs:
-            raise ValueError(f"No documents found at '{self.docs_path}'")
-        self._log(f"{len(docs)} documents loaded")
+        self._log(
+            f"Loaded {docs.loaded.count} file(s)"
+                )
 
-        if docs.skipped:   # NEW — surface skip info through MetaRAG's own logger, since loader stayed quiet
-            for ext, info in docs.skipped.items():
-                self._log(f"⚠️  Skipped {info.count} .{ext} file(s) — missing optional dependency")
-
+        if docs.skipped.count:
+            self._log(
+                f"Skipped {docs.skipped.count} file(s)"
+                )
 
         self._log("Chunking...")
         chunker = Chunker(strategy=self.chunk_strategy, chunk_size=self.chunk_size, overlap=self.chunk_overlap)
