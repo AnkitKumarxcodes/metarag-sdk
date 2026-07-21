@@ -25,6 +25,7 @@ mode) is usable and tested, but should be considered pre-1.0 / subject to
 signature changes as the toolkit surface gets battle-tested. Pin your
 MetaRAG version if you depend directly on these for production use.
 """
+from importlib.metadata import PackageNotFoundError, version
 try:
     __version__ = version("metarag-sdk")
 except PackageNotFoundError:
@@ -59,7 +60,7 @@ from .router import (
 )
 from .defaults import DEFAULTS , MetaRAGDefaults
 
-from importlib.metadata import PackageNotFoundError, version
+
 
 
 
