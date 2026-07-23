@@ -242,7 +242,7 @@ class MetaRAG:
         and visualization.
         """
 
-        self._ensure_fitted()
+        self._check_fitted()
 
         return self._extract_query_features(query).copy()
     
