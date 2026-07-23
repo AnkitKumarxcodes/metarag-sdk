@@ -231,9 +231,32 @@ class MetaRAG:
             self._reranker = Reranker()
         return self._reranker
     
+    def extract_query_features(self, query: str) -> dict:
+        """
+        Extract the complete routing feature vector for a query.
+
+        This is the same feature dictionary used internally by ask()
+        before selecting a retrieval pipeline.
+
+        Primarily intended for custom routers, debugging, analysis,
+        and visualization.
+        """
+
+        self._ensure_fitted()
+
+        return self._extract_query_features(query).copy()
+    
+    def predict_route(self, query: str) -> str:
+        self._check_fitted()
+
+        features = self.extract_query_features(query)
+
+        if self._router is None:
+            return next(iter(self._pipeline_builders))
+
+        return self._router.route(features)
+    
     def fit(self, force: bool = False) -> "MetaRAG":
-        self._pipeline_cache.clear()
-        self._reranker = None
         """Load documents → chunk → embed → index → build pipelines."""
         t0 = time.time()
         self._log("fit() starting...")
@@ -257,8 +280,7 @@ class MetaRAG:
         t0 = time.time()
 
         if self._router is not None:
-            features = self._extract_query_features(query)
-            pipeline_name = self._router.route(features)
+            pipeline_name = self.predict_route(query)
         else:
             pipeline_name = next(iter(self._pipeline_builders))  # no hardcoded "hybrid" — just take whatever exists first
 
@@ -462,7 +484,7 @@ class MetaRAG:
 
         if self._router is not None and len(df):
             sample_query = df["query"].iloc[0]
-            router_pick = self._router.route(self._extract_query_features(sample_query))
+            router_pick = self.predict_route(sample_query)
             print(f"🔀 Router would pick: {router_pick}")
 
         return summary
@@ -523,7 +545,7 @@ class MetaRAG:
     def explain(self, query: str) -> Dict[str, Any]:
         """Why did (or would) the router pick this pipeline for this query."""
         self._check_fitted()
-        features = self._extract_query_features(query)
+        features = self.extract_query_features(query)
 
         if self._router is not None:
             pipeline_name = self._router.route(features)
@@ -659,10 +681,12 @@ class MetaRAG:
         stage doesn't have anything more specific to report.
         """
         self._check_fitted()
-        pipeline_name = pipeline_name or (
-            self._router.route(self._extract_query_features(query))
-            if self._router is not None else next(iter(self._pipeline_builders))
-        )
+        if pipeline_name is None:
+            pipeline_name = (
+                    self.predict_route(query)
+                    if self._router is not None
+                    else next(iter(self._pipeline_builders))
+                )
         try:
             pipeline = self._get_pipeline(pipeline_name)
         except ValueError:
@@ -857,7 +881,6 @@ class MetaRAG:
 
         self._log("Loading documents...")
         docs = DocumentLoader(self.docs_path).load(verbose = False)
-        docs = DocumentLoader(self.docs_path).load(verbose=False)
 
         if docs.loaded.count == 0:
             raise ValueError(f"No documents found at '{self.docs_path}'")
